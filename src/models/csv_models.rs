@@ -134,6 +134,12 @@ pub struct Dispute {
     id: TransactionId,
 }
 
+impl Dispute {
+    pub fn id(&self) -> TransactionId {
+        self.id
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Resolve {
@@ -141,11 +147,23 @@ pub struct Resolve {
     id: TransactionId,
 }
 
+impl Resolve {
+    pub fn id(&self) -> TransactionId {
+        self.id
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Chargeback {
     client_id: ClientId,
     id: TransactionId,
+}
+
+impl Chargeback {
+    pub fn id(&self) -> TransactionId {
+        self.id
+    }
 }
 
 /// This permits to avoid checks on negative amount while processing transactions.
