@@ -1,13 +1,14 @@
+use color_eyre::eyre::bail;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct ClientId(u16);
+pub struct ClientId(pub u16);
 
 #[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct TransactionId(u32);
+pub struct TransactionId(pub u32);
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -102,74 +103,55 @@ impl<'de> Deserialize<'de> for Transaction {
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Deposit {
-    client_id: ClientId,
-    id: TransactionId,
-    amount: PositiveAmount,
-}
-
-impl Deposit {
-    pub fn amount(&self) -> PositiveAmount {
-        self.amount
-    }
+    pub client_id: ClientId,
+    pub id: TransactionId,
+    pub amount: PositiveAmount,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Withdrawal {
-    client_id: ClientId,
-    id: TransactionId,
-    amount: PositiveAmount,
-}
-
-impl Withdrawal {
-    pub fn amount(&self) -> PositiveAmount {
-        self.amount
-    }
+    pub client_id: ClientId,
+    pub id: TransactionId,
+    pub amount: PositiveAmount,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Dispute {
-    client_id: ClientId,
-    id: TransactionId,
-}
-
-impl Dispute {
-    pub fn id(&self) -> TransactionId {
-        self.id
-    }
+    pub client_id: ClientId,
+    pub id: TransactionId,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Resolve {
-    client_id: ClientId,
-    id: TransactionId,
-}
-
-impl Resolve {
-    pub fn id(&self) -> TransactionId {
-        self.id
-    }
+    pub client_id: ClientId,
+    pub id: TransactionId,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Chargeback {
-    client_id: ClientId,
-    id: TransactionId,
-}
-
-impl Chargeback {
-    pub fn id(&self) -> TransactionId {
-        self.id
-    }
+    pub client_id: ClientId,
+    pub id: TransactionId,
 }
 
 /// This permits to avoid checks on negative amount while processing transactions.
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PositiveAmount(Decimal);
+
+impl TryFrom<Decimal> for PositiveAmount {
+    type Error = color_eyre::Report;
+
+    fn try_from(value: Decimal) -> Result<Self, Self::Error> {
+        if value.is_sign_negative() {
+            bail!("Decimal must be positive value={value:?}");
+        }
+        Ok(Self(value))
+    }
+}
 
 impl PositiveAmount {
     pub fn as_inner(&self) -> Decimal {
@@ -183,22 +165,18 @@ impl<'de> Deserialize<'de> for PositiveAmount {
         D: Deserializer<'de>,
     {
         let decimal = <Decimal as serde::Deserialize>::deserialize(deserializer)?;
-
-        if decimal.is_sign_negative() {
-            return Err(serde::de::Error::custom("Decimal must be positive"));
-        }
-
-        Ok(PositiveAmount(decimal))
+        PositiveAmount::try_from(decimal).map_err(|error| serde::de::Error::custom(error.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use csv::Trim;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
     use rust_decimal::Decimal;
-    use std::str::FromStr;
 
     use super::*;
 
@@ -240,10 +218,7 @@ mod tests {
             id: TransactionId(14)
         }))
     ]
-    fn deserialize_transaction_returns_the_expected_transactions(
-        #[case] csv_row: &str,
-        #[case] expected: Transaction,
-    ) {
+    fn deserialize_transaction_returns_the_expected_transactions(#[case] csv_row: &str, #[case] expected: Transaction) {
         assert2::let_assert!(Ok(txs) = deserialize_csv_rows(csv_row));
         assert_eq!([expected], txs.as_slice());
     }
@@ -257,10 +232,7 @@ mod tests {
         "foobar,8,17,1.00",
         "unknown variant `foobar`, expected one of `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`"
     )]
-    fn deserialize_transaction_returns_the_expected_error(
-        #[case] csv_row: &str,
-        #[case] expected_substr: &str,
-    ) {
+    fn deserialize_transaction_returns_the_expected_error(#[case] csv_row: &str, #[case] expected_substr: &str) {
         assert2::let_assert!(Err(error) = deserialize_csv_rows(csv_row));
         assert!(
             error.to_string().contains(expected_substr),
@@ -271,9 +243,7 @@ mod tests {
 
     fn deserialize_csv_rows(row: &str) -> Result<Vec<Transaction>, csv::Error> {
         let data = format!("type,client,tx,amount\n{row}");
-        let mut rdr = csv::ReaderBuilder::new()
-            .trim(Trim::All)
-            .from_reader(data.as_bytes());
+        let mut rdr = csv::ReaderBuilder::new().trim(Trim::All).from_reader(data.as_bytes());
         let mut out = Vec::new();
         for rec in rdr.deserialize::<Transaction>() {
             out.push(rec?);

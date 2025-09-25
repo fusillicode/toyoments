@@ -6,6 +6,10 @@ use crate::models::csv_models::PositiveAmount;
 use crate::models::csv_models::Transaction;
 use crate::models::csv_models::TransactionId;
 
+#[cfg(test)]
+#[path = "./engine_tests.rs"]
+mod engine_tests;
+
 pub struct PaymentEngine {
     disputable_txs: HashMap<TransactionId, DisputableTransaction>,
 }
@@ -37,10 +41,10 @@ impl PaymentEngine {
         }
 
         match tx {
-            Transaction::Deposit(deposit) => client_account.deposit(deposit.amount())?,
-            Transaction::Withdrawal(withdrawal) => client_account.withdraw(withdrawal.amount())?,
+            Transaction::Deposit(deposit) => client_account.deposit(deposit.amount)?,
+            Transaction::Withdrawal(withdrawal) => client_account.withdraw(withdrawal.amount)?,
             Transaction::Dispute(dispute) => {
-                let disputed_tx_id = dispute.id();
+                let disputed_tx_id = dispute.id;
                 let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
 
                 if disputable_tx.is_disputed {
@@ -59,7 +63,7 @@ impl PaymentEngine {
                 disputable_tx.is_disputed = true;
             }
             Transaction::Resolve(resolve) => {
-                let resolvable_tx_id = resolve.id();
+                let resolvable_tx_id = resolve.id;
                 let disputable_tx = self.get_disputable_transaction(resolvable_tx_id)?;
 
                 if !disputable_tx.is_disputed {
@@ -74,7 +78,7 @@ impl PaymentEngine {
                 disputable_tx.is_disputed = false;
             }
             Transaction::Chargeback(chargeback) => {
-                let chargeback_tx_id = chargeback.id();
+                let chargeback_tx_id = chargeback.id;
                 let disputable_tx = self.get_disputable_transaction(chargeback_tx_id)?;
 
                 if !disputable_tx.is_disputed {
@@ -160,13 +164,13 @@ impl From<Transaction> for Option<DisputableTransaction> {
         match tx {
             Transaction::Deposit(deposit) => Some(DisputableTransaction {
                 id,
-                amount: deposit.amount(),
+                amount: deposit.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Deposit,
             }),
             Transaction::Withdrawal(withdrawal) => Some(DisputableTransaction {
                 id,
-                amount: withdrawal.amount(),
+                amount: withdrawal.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Withdrawal,
             }),

@@ -17,13 +17,9 @@ mod models;
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    let tx_file_path = std::env::args()
-        .nth(1)
-        .ok_or_eyre("no transactions CSV supplied")?;
+    let tx_file_path = std::env::args().nth(1).ok_or_eyre("no transactions CSV supplied")?;
 
-    let mut tx_file_reader = ReaderBuilder::new()
-        .trim(Trim::All)
-        .from_path(tx_file_path)?;
+    let mut tx_file_reader = ReaderBuilder::new().trim(Trim::All).from_path(tx_file_path)?;
 
     let mut clients_accounts = ClientsAccounts::new();
     let mut payment_engine = PaymentEngine::new();

@@ -13,9 +13,7 @@ impl ClientsAccounts {
     }
 
     pub fn get_or_create_new_account(&mut self, client_id: ClientId) -> &mut ClientAccount {
-        self.0
-            .entry(client_id)
-            .or_insert(ClientAccount::new(client_id))
+        self.0.entry(client_id).or_insert(ClientAccount::new(client_id))
     }
 
     pub fn as_inner(&self) -> &HashMap<ClientId, ClientAccount> {
@@ -32,7 +30,7 @@ pub struct ClientAccount {
 }
 
 impl ClientAccount {
-    fn new(client_id: ClientId) -> Self {
+    pub fn new(client_id: ClientId) -> Self {
         Self {
             client_id,
             available: Decimal::ZERO,
@@ -109,19 +107,13 @@ impl ClientAccount {
         Ok(())
     }
 
-    fn checked_add_to_available(
-        &self,
-        amount: PositiveAmount,
-    ) -> Result<Decimal, ClientAccountError> {
+    fn checked_add_to_available(&self, amount: PositiveAmount) -> Result<Decimal, ClientAccountError> {
         self.available
             .checked_add(amount.as_inner())
             .ok_or_else(|| self.overflow_error(amount))
     }
 
-    fn checked_sub_from_available(
-        &self,
-        amount: PositiveAmount,
-    ) -> Result<Decimal, ClientAccountError> {
+    fn checked_sub_from_available(&self, amount: PositiveAmount) -> Result<Decimal, ClientAccountError> {
         if self.available < amount.as_inner() {
             return Err(self.insufficient_funds_error(amount));
         }
