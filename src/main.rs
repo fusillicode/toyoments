@@ -5,14 +5,14 @@ use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-use crate::engine::PaymentEngine;
 use crate::models::clients_accounts::ClientAccount;
 use crate::models::clients_accounts::ClientsAccounts;
 use crate::models::csv_models::ClientId;
 use crate::models::csv_models::Transaction;
+use crate::payment_engine::PaymentEngine;
 
-mod engine;
 mod models;
+mod payment_engine;
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
