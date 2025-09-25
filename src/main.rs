@@ -37,7 +37,7 @@ fn main() -> color_eyre::Result<()> {
         let client_account = clients_accounts.get_or_create_new_account(tx.client_id());
 
         if let Err(error) = payment_engine.handle_transaction(client_account, tx) {
-            eprint!(
+            eprintln!(
                 "error handling transaction for client account, tx={tx:?}, client_account={client_account:?}, error={error:?}"
             )
         }

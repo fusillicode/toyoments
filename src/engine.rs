@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use color_eyre::eyre::bail;
-
 use crate::models::clients_accounts::ClientAccount;
+use crate::models::clients_accounts::ClientAccountError;
 use crate::models::csv_models::PositiveAmount;
 use crate::models::csv_models::Transaction;
 use crate::models::csv_models::TransactionId;
@@ -24,13 +23,17 @@ impl PaymentEngine {
         tx: Transaction,
     ) -> color_eyre::Result<()> {
         if client_account.client_id() != tx.client_id() {
-            bail!("transaction not related to the account tx={tx:?}, account={client_account:?}")
+            return Err(PaymentEngineError::UnrelatedTransaction {
+                client_account: *client_account,
+                tx,
+            })?;
         }
 
         if client_account.locked() {
-            bail!(
-                "client account locked, skip processing transaction, client_account={client_account:?}, tx={tx:?}"
-            );
+            return Err(PaymentEngineError::ClientAccountLocked {
+                client_account: *client_account,
+                tx,
+            })?;
         }
 
         match tx {
@@ -38,16 +41,13 @@ impl PaymentEngine {
             Transaction::Withdrawal(withdrawal) => client_account.withdraw(withdrawal.amount())?,
             Transaction::Dispute(dispute) => {
                 let disputed_tx_id = dispute.id();
-                let Some(disputable_tx) = self.disputable_txs.get_mut(&disputed_tx_id) else {
-                    return Ok(());
-                };
-
-                if disputable_tx.id != disputed_tx_id {
-                    bail!("mismatched ids")
-                }
+                let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
 
                 if disputable_tx.is_disputed {
-                    bail!("already disputed")
+                    return Err(PaymentEngineError::TransactionAlreadyDisputed {
+                        client_account: *client_account,
+                        tx,
+                    })?;
                 }
 
                 if disputable_tx.is_deposit() {
@@ -61,49 +61,36 @@ impl PaymentEngine {
             }
             Transaction::Resolve(resolve) => {
                 let resolvable_tx_id = resolve.id();
-                let Some(disputable_tx) = self.disputable_txs.get_mut(&resolvable_tx_id) else {
-                    return Ok(());
-                };
-
-                if disputable_tx.id != resolvable_tx_id {
-                    bail!("mismatched ids")
-                }
+                let disputable_tx = self.get_disputable_transaction(resolvable_tx_id)?;
 
                 if !disputable_tx.is_disputed {
-                    bail!("tx not disputed")
+                    return Err(PaymentEngineError::TransactionNotDisputed {
+                        client_account: *client_account,
+                        tx,
+                    })?;
                 }
 
-                client_account.free(disputable_tx.amount)?;
+                client_account.unhold(disputable_tx.amount)?;
                 client_account.deposit(disputable_tx.amount)?;
 
                 disputable_tx.is_disputed = false;
             }
             Transaction::Chargeback(chargeback) => {
                 let chargeback_tx_id = chargeback.id();
-                let Some(disputable_tx) = self.disputable_txs.get_mut(&chargeback_tx_id) else {
-                    return Ok(());
-                };
-
-                if disputable_tx.id != chargeback_tx_id {
-                    bail!("mismatched ids")
-                }
+                let disputable_tx = self.get_disputable_transaction(chargeback_tx_id)?;
 
                 if !disputable_tx.is_disputed {
-                    bail!("tx not disputed")
+                    return Err(PaymentEngineError::TransactionNotDisputed {
+                        client_account: *client_account,
+                        tx,
+                    })?;
                 }
 
                 if disputable_tx.is_deposit() {
-                    client_account.withdraw(disputable_tx.amount)?;
-                    client_account.hold(disputable_tx.amount)?;
-                } else {
-                    client_account.hold(disputable_tx.amount)?;
-                }
-
-                if disputable_tx.is_deposit() {
-                    client_account.free(disputable_tx.amount)?;
+                    client_account.unhold(disputable_tx.amount)?;
                 } else {
                     client_account.deposit(disputable_tx.amount)?;
-                    client_account.free(disputable_tx.amount)?;
+                    client_account.unhold(disputable_tx.amount)?;
                 }
 
                 client_account.lock();
@@ -111,13 +98,49 @@ impl PaymentEngine {
             }
         };
 
-        let Some(disputable_tx) = Option::<DisputableTransaction>::from(tx) else {
-            return Ok(());
-        };
-        self.disputable_txs.insert(disputable_tx.id, disputable_tx);
+        if let Some(disputable_tx) = Option::<DisputableTransaction>::from(tx) {
+            self.disputable_txs.insert(disputable_tx.id, disputable_tx);
+        }
 
         Ok(())
     }
+
+    fn get_disputable_transaction(
+        &mut self,
+        id: TransactionId,
+    ) -> Result<&mut DisputableTransaction, PaymentEngineError> {
+        self.disputable_txs
+            .get_mut(&id)
+            .ok_or(PaymentEngineError::TransactionNotFound { id })
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum PaymentEngineError {
+    #[error("transaction not related to the account tx={tx:?}, account={client_account:?}")]
+    UnrelatedTransaction {
+        client_account: ClientAccount,
+        tx: Transaction,
+    },
+    #[error("client account locked, cannot process tx={tx:?}, account={client_account:?}")]
+    ClientAccountLocked {
+        client_account: ClientAccount,
+        tx: Transaction,
+    },
+    #[error("transaction not found id={id:?}")]
+    TransactionNotFound { id: TransactionId },
+    #[error("transaction already disputed tx={tx:?}, account={client_account:?}")]
+    TransactionAlreadyDisputed {
+        client_account: ClientAccount,
+        tx: Transaction,
+    },
+    #[error("transaction not disputed tx={tx:?}, account={client_account:?}")]
+    TransactionNotDisputed {
+        client_account: ClientAccount,
+        tx: Transaction,
+    },
+    #[error(transparent)]
+    ClientAccount(#[from] ClientAccountError),
 }
 
 #[derive(Debug)]

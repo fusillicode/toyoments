@@ -65,39 +65,57 @@ impl ClientAccount {
         self.locked = true;
     }
 
-    pub fn deposit(&mut self, amount: PositiveAmount) -> Result<(), Error> {
+    pub fn deposit(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
         let Some(new_available) = self.available.checked_add(amount.as_inner()) else {
-            return Err(Error::OperationOverflow(*self, amount));
+            return Err(ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            });
         };
         self.available = new_available;
         Ok(())
     }
 
-    pub fn withdraw(&mut self, amount: PositiveAmount) -> Result<(), Error> {
+    pub fn withdraw(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
         if self.available < amount.as_inner() {
-            return Err(Error::InsufficientFunds(*self, amount));
+            return Err(ClientAccountError::InsufficientFunds {
+                client_account: *self,
+                amount,
+            });
         }
         let Some(new_available) = self.available.checked_sub(amount.as_inner()) else {
-            return Err(Error::OperationOverflow(*self, amount));
+            return Err(ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            });
         };
         self.available = new_available;
         Ok(())
     }
 
-    pub fn hold(&mut self, amount: PositiveAmount) -> Result<(), Error> {
+    pub fn hold(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
         let Some(new_held) = self.held.checked_add(amount.as_inner()) else {
-            return Err(Error::OperationOverflow(*self, amount));
+            return Err(ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            });
         };
         self.held = new_held;
         Ok(())
     }
 
-    pub fn free(&mut self, amount: PositiveAmount) -> Result<(), Error> {
+    pub fn unhold(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
         if self.held < amount.as_inner() {
-            return Err(Error::InsufficientFunds(*self, amount));
+            return Err(ClientAccountError::InsufficientFunds {
+                client_account: *self,
+                amount,
+            });
         }
         let Some(new_held) = self.held.checked_sub(amount.as_inner()) else {
-            return Err(Error::OperationOverflow(*self, amount));
+            return Err(ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            });
         };
         self.held = new_held;
         Ok(())
@@ -105,9 +123,15 @@ impl ClientAccount {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("foo")]
-    OperationOverflow(ClientAccount, PositiveAmount),
-    #[error("foo")]
-    InsufficientFunds(ClientAccount, PositiveAmount),
+pub enum ClientAccountError {
+    #[error("operation overflow applying amount={amount:?} to account={client_account:?}")]
+    OperationOverflow {
+        client_account: ClientAccount,
+        amount: PositiveAmount,
+    },
+    #[error("insufficient funds amount={amount:?} account={client_account:?}")]
+    InsufficientFunds {
+        client_account: ClientAccount,
+        amount: PositiveAmount,
+    },
 }
