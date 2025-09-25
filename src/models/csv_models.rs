@@ -19,6 +19,28 @@ pub enum Transaction {
     Chargeback(Chargeback),
 }
 
+impl Transaction {
+    pub fn id(&self) -> TransactionId {
+        match self {
+            Transaction::Deposit(Deposit { id, .. })
+            | Transaction::Withdrawal(Withdrawal { id, .. })
+            | Transaction::Dispute(Dispute { id, .. })
+            | Transaction::Resolve(Resolve { id, .. })
+            | Transaction::Chargeback(Chargeback { id, .. }) => *id,
+        }
+    }
+
+    pub fn client_id(&self) -> ClientId {
+        match self {
+            Transaction::Deposit(Deposit { client_id, .. })
+            | Transaction::Withdrawal(Withdrawal { client_id, .. })
+            | Transaction::Dispute(Dispute { client_id, .. })
+            | Transaction::Resolve(Resolve { client_id, .. })
+            | Transaction::Chargeback(Chargeback { client_id, .. }) => *client_id,
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Transaction {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -85,12 +107,24 @@ pub struct Deposit {
     amount: PositiveAmount,
 }
 
+impl Deposit {
+    pub fn amount(&self) -> PositiveAmount {
+        self.amount
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Withdrawal {
     client_id: ClientId,
     id: TransactionId,
     amount: PositiveAmount,
+}
+
+impl Withdrawal {
+    pub fn amount(&self) -> PositiveAmount {
+        self.amount
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -118,6 +152,12 @@ pub struct Chargeback {
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PositiveAmount(Decimal);
+
+impl PositiveAmount {
+    pub fn as_inner(&self) -> Decimal {
+        self.0
+    }
+}
 
 impl<'de> Deserialize<'de> for PositiveAmount {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
