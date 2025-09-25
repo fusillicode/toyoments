@@ -66,12 +66,12 @@ impl ClientAccount {
     }
 
     pub fn deposit(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
-        let Some(new_available) = self.available.checked_add(amount.as_inner()) else {
-            return Err(ClientAccountError::OperationOverflow {
+        let new_available = self.available.checked_add(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
                 client_account: *self,
                 amount,
-            });
-        };
+            },
+        )?;
         self.available = new_available;
         Ok(())
     }
@@ -93,6 +93,30 @@ impl ClientAccount {
         Ok(())
     }
 
+    pub fn withdraw_and_hold(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
+        if self.available < amount.as_inner() {
+            return Err(ClientAccountError::InsufficientFunds {
+                client_account: *self,
+                amount,
+            });
+        }
+        let new_available = self.available.checked_sub(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        let new_held = self.held.checked_add(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        self.available = new_available;
+        self.held = new_held;
+        Ok(())
+    }
+
     pub fn hold(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
         let Some(new_held) = self.held.checked_add(amount.as_inner()) else {
             return Err(ClientAccountError::OperationOverflow {
@@ -111,12 +135,12 @@ impl ClientAccount {
                 amount,
             });
         }
-        let Some(new_held) = self.held.checked_sub(amount.as_inner()) else {
-            return Err(ClientAccountError::OperationOverflow {
+        let new_held = self.held.checked_sub(amount.as_inner()).ok_or({
+            ClientAccountError::OperationOverflow {
                 client_account: *self,
                 amount,
-            });
-        };
+            }
+        })?;
         self.held = new_held;
         Ok(())
     }

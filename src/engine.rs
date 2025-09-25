@@ -51,8 +51,7 @@ impl PaymentEngine {
                 }
 
                 if disputable_tx.is_deposit() {
-                    client_account.withdraw(disputable_tx.amount)?;
-                    client_account.hold(disputable_tx.amount)?;
+                    client_account.withdraw_and_hold(disputable_tx.amount)?;
                 } else {
                     client_account.hold(disputable_tx.amount)?;
                 }
