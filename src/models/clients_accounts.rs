@@ -144,6 +144,54 @@ impl ClientAccount {
         self.held = new_held;
         Ok(())
     }
+
+    pub fn unhold_and_deposit(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
+        if self.held < amount.as_inner() {
+            return Err(ClientAccountError::InsufficientFunds {
+                client_account: *self,
+                amount,
+            });
+        }
+        let new_held = self.held.checked_sub(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        let new_available = self.available.checked_add(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        self.held = new_held;
+        self.available = new_available;
+        Ok(())
+    }
+
+    pub fn deposit_and_unhold(&mut self, amount: PositiveAmount) -> Result<(), ClientAccountError> {
+        if self.held < amount.as_inner() {
+            return Err(ClientAccountError::InsufficientFunds {
+                client_account: *self,
+                amount,
+            });
+        }
+        let new_available = self.available.checked_add(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        let new_held = self.held.checked_sub(amount.as_inner()).ok_or(
+            ClientAccountError::OperationOverflow {
+                client_account: *self,
+                amount,
+            },
+        )?;
+        self.available = new_available;
+        self.held = new_held;
+        Ok(())
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

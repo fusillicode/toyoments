@@ -69,8 +69,7 @@ impl PaymentEngine {
                     })?;
                 }
 
-                client_account.unhold(disputable_tx.amount)?;
-                client_account.deposit(disputable_tx.amount)?;
+                client_account.unhold_and_deposit(disputable_tx.amount)?;
 
                 disputable_tx.is_disputed = false;
             }
@@ -88,11 +87,10 @@ impl PaymentEngine {
                 if disputable_tx.is_deposit() {
                     client_account.unhold(disputable_tx.amount)?;
                 } else {
-                    client_account.deposit(disputable_tx.amount)?;
-                    client_account.unhold(disputable_tx.amount)?;
+                    client_account.deposit_and_unhold(disputable_tx.amount)?;
                 }
-
                 client_account.lock();
+
                 disputable_tx.is_disputed = false;
             }
         };
