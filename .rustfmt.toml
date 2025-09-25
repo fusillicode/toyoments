@@ -1,0 +1,13 @@
+edition = "2024"
+
+comment_width = 120                # supported in nightly :)
+group_imports = "StdExternalCrate" # supported in nightly :)
+imports_granularity = "Item"       # supported in nightly :)
+max_width = 120
+reorder_impl_items = true          # supported in nightly :)
+reorder_imports = true
+reorder_modules = true
+trailing_semicolon = true          # supported in nightly :)
+use_field_init_shorthand = true
+use_try_shorthand = true
+wrap_comments = true               # supported in nightly :)
