@@ -244,7 +244,7 @@ mod tests {
         #[case] csv_row: &str,
         #[case] expected: Transaction,
     ) {
-        let txs = deserialize_csv_rows(csv_row).unwrap();
+        assert2::let_assert!(Ok(txs) = deserialize_csv_rows(csv_row));
         assert_eq!([expected], txs.as_slice());
     }
 
