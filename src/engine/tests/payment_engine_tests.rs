@@ -175,8 +175,12 @@ fn handle_transaction_withdrawal_with_insufficient_funds_errors_as_expected() {
 #[test]
 fn handle_transaction_dispute_same_transaction_twice_errors_as_expected() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(50, "5.00")));
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(50)));
+    payment_engine
+        .handle_transaction(&mut client_account, deposit(50, "5.00"))
+        .unwrap();
+    payment_engine
+        .handle_transaction(&mut client_account, dispute(50))
+        .unwrap();
 
     let res = payment_engine.handle_transaction(&mut client_account, dispute(50));
 
@@ -214,7 +218,9 @@ fn handle_transaction_resolve_without_dispute_errors_as_expected() {
 #[test]
 fn handle_transaction_resolve_unknown_transaction_errors_as_expected() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+
     let res = payment_engine.handle_transaction(&mut client_account, resolve(999));
+
     let_assert!(Err(PaymentEngineError::TransactionNotFound { id }) = res);
     assert_eq!(id, TransactionId(999));
 }
@@ -252,7 +258,9 @@ fn handle_transaction_dispute_cross_client_without_override_errors_as_expected()
     let mut payment_engine = PaymentEngine::default();
     // Victim client 0 deposit id=80
     let mut victim_account = ClientAccount::new(TEST_CLIENT_ID);
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut victim_account, deposit(80, "9.00")));
+    payment_engine
+        .handle_transaction(&mut victim_account, deposit(80, "9.00"))
+        .unwrap();
 
     // Attacker client 1 disputes victim's transaction id=80 -> now simply not found for that client
     let attacker_client_id = ClientId(TEST_CLIENT_ID.0 + 1);
@@ -276,18 +284,26 @@ fn handle_transaction_dispute_same_tx_id_different_clients_are_isolated() {
     let mut payment_engine = PaymentEngine::default();
     // Client 0 deposit tx=70
     let mut client_account_0 = ClientAccount::new(TEST_CLIENT_ID);
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_0, deposit(70, "5.00")));
+    payment_engine
+        .handle_transaction(&mut client_account_0, deposit(70, "5.00"))
+        .unwrap();
 
     // Client 1 deposit with SAME tx id=70 (allowed; separate namespace)
     let client1_id = ClientId(TEST_CLIENT_ID.0 + 1);
     let mut client_account_1 = ClientAccount::new(client1_id);
     let other_deposit = deposit_for(client1_id, 70, "7.50");
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_1, other_deposit));
+    payment_engine
+        .handle_transaction(&mut client_account_1, other_deposit)
+        .unwrap();
 
     // Both can independently dispute their own tx id=70
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_0, dispute(70)));
+    payment_engine
+        .handle_transaction(&mut client_account_0, dispute(70))
+        .unwrap();
     let client1_dispute = dispute_for(client1_id, 70);
-    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_1, client1_dispute));
+    payment_engine
+        .handle_transaction(&mut client_account_1, client1_dispute)
+        .unwrap();
 
     // Balances reflect held amounts separately
     assert_eq!(client_account_0.available(), Decimal::ZERO);
