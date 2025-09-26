@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::account::ClientAccount;
 use crate::account::ClientAccountError;
 use crate::engine::disputable_transaction::DisputableTransaction;
+use crate::transaction::ClientId;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 
@@ -56,6 +57,14 @@ impl PaymentEngine {
                 let disputed_tx_id = dispute.id;
                 let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
 
+                if disputable_tx.client_id != client_account.client_id() {
+                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
+                        client_account: *client_account,
+                        tx,
+                        owner_client_id: disputable_tx.client_id,
+                    });
+                }
+
                 if disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionAlreadyDisputed {
                         client_account: *client_account,
@@ -75,6 +84,14 @@ impl PaymentEngine {
                 let resolvable_tx_id = resolve.id;
                 let disputable_tx = self.get_disputable_transaction(resolvable_tx_id)?;
 
+                if disputable_tx.client_id != client_account.client_id() {
+                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
+                        client_account: *client_account,
+                        tx,
+                        owner_client_id: disputable_tx.client_id,
+                    });
+                }
+
                 if !disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionNotDisputed {
                         client_account: *client_account,
@@ -89,6 +106,14 @@ impl PaymentEngine {
             Transaction::Chargeback(chargeback) => {
                 let chargeback_tx_id = chargeback.id;
                 let disputable_tx = self.get_disputable_transaction(chargeback_tx_id)?;
+
+                if disputable_tx.client_id != client_account.client_id() {
+                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
+                        client_account: *client_account,
+                        tx,
+                        owner_client_id: disputable_tx.client_id,
+                    });
+                }
 
                 if !disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionNotDisputed {
@@ -148,6 +173,14 @@ pub enum PaymentEngineError {
     TransactionNotDisputed {
         client_account: ClientAccount,
         tx: Transaction,
+    },
+    #[error(
+        "disputed transaction ownership mismatch tx={tx:?}, account={client_account:?}, owner_client_id={owner_client_id:?}"
+    )]
+    DisputableOwnershipMismatch {
+        client_account: ClientAccount,
+        tx: Transaction,
+        owner_client_id: ClientId,
     },
     #[error(transparent)]
     ClientAccount(#[from] ClientAccountError),

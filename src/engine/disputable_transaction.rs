@@ -1,3 +1,4 @@
+use crate::transaction::ClientId;
 use crate::transaction::PositiveAmount;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
@@ -5,6 +6,7 @@ use crate::transaction::TransactionId;
 #[derive(Debug)]
 pub struct DisputableTransaction {
     pub(in crate::engine) id: TransactionId,
+    pub(in crate::engine) client_id: ClientId,
     pub(in crate::engine) amount: PositiveAmount,
     pub(in crate::engine) is_disputed: bool,
     pub(in crate::engine) kind: DisputableTransactionKind,
@@ -19,15 +21,18 @@ impl DisputableTransaction {
 impl From<Transaction> for Option<DisputableTransaction> {
     fn from(tx: Transaction) -> Self {
         let id = tx.id();
+        let client_id = tx.client_id();
         match tx {
             Transaction::Deposit(deposit) => Some(DisputableTransaction {
                 id,
+                client_id,
                 amount: deposit.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Deposit,
             }),
             Transaction::Withdrawal(withdrawal) => Some(DisputableTransaction {
                 id,
+                client_id,
                 amount: withdrawal.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Withdrawal,
