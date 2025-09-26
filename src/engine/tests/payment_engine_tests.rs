@@ -1,9 +1,12 @@
 use std::str::FromStr;
 
+use assert2::let_assert;
 use rust_decimal::Decimal;
 
 use crate::account::ClientAccount;
+use crate::account::ClientAccountError;
 use crate::engine::PaymentEngine;
+use crate::engine::payment_engine::PaymentEngineError;
 use crate::transaction::Chargeback;
 use crate::transaction::ClientId;
 use crate::transaction::Deposit;
@@ -42,8 +45,17 @@ fn handle_transaction_withdrawal_reduces_available() {
 #[test]
 fn handle_transaction_withdrawal_insufficient_funds_errors() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
-    let result = payment_engine.handle_transaction(&mut client_account, withdrawal(5, "1.00"));
-    assert!(result.is_err());
+    let res = payment_engine.handle_transaction(&mut client_account, withdrawal(5, "1.00"));
+    let_assert!(
+        Err(PaymentEngineError::ClientAccount(
+            ClientAccountError::InsufficientFunds {
+                client_account: err_account,
+                amount
+            }
+        )) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(amount.as_inner(), dec("1.00"));
     assert_eq!(client_account.available(), Decimal::ZERO);
     assert_eq!(client_account.held(), Decimal::ZERO);
 }
@@ -99,8 +111,15 @@ fn handle_transaction_resolve_without_dispute_errors() {
     payment_engine
         .handle_transaction(&mut client_account, deposit(12, "3.00"))
         .unwrap();
-    let result = payment_engine.handle_transaction(&mut client_account, resolve(12));
-    assert!(result.is_err());
+    let res = payment_engine.handle_transaction(&mut client_account, resolve(12));
+    let_assert!(
+        Err(PaymentEngineError::TransactionNotDisputed {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.id(), TransactionId(12));
     assert_eq!(client_account.available(), dec("3.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
 }
@@ -154,8 +173,16 @@ fn handle_transaction_unrelated_client_errors() {
         id: TransactionId(31),
         amount: PositiveAmount::try_from(dec("2.00")).unwrap(),
     });
-    let result = payment_engine.handle_transaction(&mut client_account, mismatched_deposit);
-    assert!(result.is_err());
+    let res = payment_engine.handle_transaction(&mut client_account, mismatched_deposit);
+    let_assert!(
+        Err(PaymentEngineError::UnrelatedTransaction {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.client_id(), mismatched_client_id);
+    assert_eq!(tx.id(), TransactionId(31));
     assert_eq!(client_account.available(), dec("1.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
 }
@@ -173,8 +200,15 @@ fn handle_transaction_locked_account_rejects_new_transaction() {
         .handle_transaction(&mut client_account, chargeback(40))
         .unwrap();
     assert!(client_account.is_locked());
-    let result = payment_engine.handle_transaction(&mut client_account, deposit(41, "1.00"));
-    assert!(result.is_err());
+    let res = payment_engine.handle_transaction(&mut client_account, deposit(41, "1.00"));
+    let_assert!(
+        Err(PaymentEngineError::ClientAccountLocked {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.id(), TransactionId(41));
     assert_eq!(client_account.available(), Decimal::ZERO);
     assert_eq!(client_account.held(), Decimal::ZERO);
 }
