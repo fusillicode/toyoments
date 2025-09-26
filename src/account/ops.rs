@@ -1,6 +1,6 @@
 use rust_decimal::Decimal;
 
-use crate::clients_accounts::client_account::ClientAccount;
+use crate::account::ClientAccount;
 use crate::transaction::PositiveAmount;
 
 pub fn lock(client_account: &mut ClientAccount) {

@@ -5,13 +5,13 @@ use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-use crate::clients_accounts::ClientsAccounts;
-use crate::clients_accounts::client_account::ClientAccount;
+use crate::account::ClientAccount;
+use crate::account::ClientsAccounts;
 use crate::payment_engine::PaymentEngine;
 use crate::transaction::ClientId;
 use crate::transaction::Transaction;
 
-mod clients_accounts;
+mod account;
 mod payment_engine;
 mod transaction;
 

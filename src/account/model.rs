@@ -4,10 +4,10 @@ use crate::transaction::ClientId;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ClientAccount {
-    pub(in crate::clients_accounts) client_id: ClientId,
-    pub(in crate::clients_accounts) available: Decimal,
-    pub(in crate::clients_accounts) held: Decimal,
-    pub(in crate::clients_accounts) locked: bool,
+    pub(in crate::account) client_id: ClientId,
+    pub(in crate::account) available: Decimal,
+    pub(in crate::account) held: Decimal,
+    pub(in crate::account) locked: bool,
 }
 
 impl ClientAccount {

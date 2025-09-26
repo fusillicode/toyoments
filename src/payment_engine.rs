@@ -1,15 +1,7 @@
 use std::collections::HashMap;
 
-use crate::clients_accounts::ClientAccount;
-use crate::clients_accounts::ClientAccountError;
-use crate::clients_accounts::deposit;
-use crate::clients_accounts::deposit_and_unhold;
-use crate::clients_accounts::hold;
-use crate::clients_accounts::lock;
-use crate::clients_accounts::unhold;
-use crate::clients_accounts::unhold_and_deposit;
-use crate::clients_accounts::withdraw;
-use crate::clients_accounts::withdraw_and_hold;
+use crate::account::ClientAccount;
+use crate::account::ClientAccountError;
 use crate::transaction::PositiveAmount;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
@@ -49,8 +41,8 @@ impl PaymentEngine {
         }
 
         match tx {
-            Transaction::Deposit(dep) => deposit(client_account, dep.amount)?,
-            Transaction::Withdrawal(wd) => withdraw(client_account, wd.amount)?,
+            Transaction::Deposit(dep) => crate::account::deposit(client_account, dep.amount)?,
+            Transaction::Withdrawal(wd) => crate::account::withdraw(client_account, wd.amount)?,
             Transaction::Dispute(dispute) => {
                 let disputed_tx_id = dispute.id;
                 let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
@@ -63,9 +55,9 @@ impl PaymentEngine {
                 }
 
                 if disputable_tx.is_deposit() {
-                    withdraw_and_hold(client_account, disputable_tx.amount)?;
+                    crate::account::withdraw_and_hold(client_account, disputable_tx.amount)?;
                 } else {
-                    hold(client_account, disputable_tx.amount)?;
+                    crate::account::hold(client_account, disputable_tx.amount)?;
                 }
 
                 disputable_tx.is_disputed = true;
@@ -81,7 +73,7 @@ impl PaymentEngine {
                     })?;
                 }
 
-                unhold_and_deposit(client_account, disputable_tx.amount)?;
+                crate::account::unhold_and_deposit(client_account, disputable_tx.amount)?;
 
                 disputable_tx.is_disputed = false;
             }
@@ -97,11 +89,11 @@ impl PaymentEngine {
                 }
 
                 if disputable_tx.is_deposit() {
-                    unhold(client_account, disputable_tx.amount)?;
+                    crate::account::unhold(client_account, disputable_tx.amount)?;
                 } else {
-                    deposit_and_unhold(client_account, disputable_tx.amount)?;
+                    crate::account::deposit_and_unhold(client_account, disputable_tx.amount)?;
                 }
-                lock(client_account);
+                crate::account::lock(client_account);
 
                 disputable_tx.is_disputed = false;
             }
