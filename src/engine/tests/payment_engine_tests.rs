@@ -43,24 +43,6 @@ fn handle_transaction_withdrawal_reduces_available() {
 }
 
 #[test]
-fn handle_transaction_withdrawal_insufficient_funds_errors() {
-    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
-    let res = payment_engine.handle_transaction(&mut client_account, withdrawal(5, "1.00"));
-    let_assert!(
-        Err(PaymentEngineError::ClientAccount(
-            ClientAccountError::InsufficientFunds {
-                client_account: err_account,
-                amount
-            }
-        )) = res
-    );
-    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
-    assert_eq!(amount.as_inner(), dec("1.00"));
-    assert_eq!(client_account.available(), Decimal::ZERO);
-    assert_eq!(client_account.held(), Decimal::ZERO);
-}
-
-#[test]
 fn handle_transaction_dispute_on_deposit_moves_funds_from_available_to_held() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     payment_engine
@@ -106,25 +88,6 @@ fn handle_transaction_resolve_releases_held_into_available() {
 }
 
 #[test]
-fn handle_transaction_resolve_without_dispute_errors() {
-    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
-    payment_engine
-        .handle_transaction(&mut client_account, deposit(12, "3.00"))
-        .unwrap();
-    let res = payment_engine.handle_transaction(&mut client_account, resolve(12));
-    let_assert!(
-        Err(PaymentEngineError::TransactionNotDisputed {
-            client_account: err_account,
-            tx
-        }) = res
-    );
-    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
-    assert_eq!(tx.id(), TransactionId(12));
-    assert_eq!(client_account.available(), dec("3.00"));
-    assert_eq!(client_account.held(), Decimal::ZERO);
-}
-
-#[test]
 fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     payment_engine
@@ -162,7 +125,44 @@ fn handle_transaction_chargeback_on_withdrawal_restores_and_locks() {
 }
 
 #[test]
-fn handle_transaction_unrelated_client_errors() {
+fn handle_transaction_withdrawal_with_insufficient_funds_errors_as_expected() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    let res = payment_engine.handle_transaction(&mut client_account, withdrawal(5, "1.00"));
+    let_assert!(
+        Err(PaymentEngineError::ClientAccount(
+            ClientAccountError::InsufficientFunds {
+                client_account: err_account,
+                amount
+            }
+        )) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(amount.as_inner(), dec("1.00"));
+    assert_eq!(client_account.available(), Decimal::ZERO);
+    assert_eq!(client_account.held(), Decimal::ZERO);
+}
+
+#[test]
+fn handle_transaction_resolve_without_dispute_errors_as_expected() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    payment_engine
+        .handle_transaction(&mut client_account, deposit(12, "3.00"))
+        .unwrap();
+    let res = payment_engine.handle_transaction(&mut client_account, resolve(12));
+    let_assert!(
+        Err(PaymentEngineError::TransactionNotDisputed {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.id(), TransactionId(12));
+    assert_eq!(client_account.available(), dec("3.00"));
+    assert_eq!(client_account.held(), Decimal::ZERO);
+}
+
+#[test]
+fn handle_transaction_of_another_client_errors_as_expected() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     payment_engine
         .handle_transaction(&mut client_account, deposit(30, "1.00"))
@@ -188,7 +188,7 @@ fn handle_transaction_unrelated_client_errors() {
 }
 
 #[test]
-fn handle_transaction_locked_account_rejects_new_transaction() {
+fn handle_transaction_on_locked_account_errors_as_expected() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     payment_engine
         .handle_transaction(&mut client_account, deposit(40, "6.00"))
@@ -211,6 +211,30 @@ fn handle_transaction_locked_account_rejects_new_transaction() {
     assert_eq!(tx.id(), TransactionId(41));
     assert_eq!(client_account.available(), Decimal::ZERO);
     assert_eq!(client_account.held(), Decimal::ZERO);
+}
+
+#[test]
+fn handle_transaction_dispute_same_transaction_twice_errors_as_expected() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(50, "5.00")));
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(50)));
+    let res = payment_engine.handle_transaction(&mut client_account, dispute(50));
+    let_assert!(
+        Err(PaymentEngineError::TransactionAlreadyDisputed {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.id(), TransactionId(50));
+}
+
+#[test]
+fn handle_transaction_resolve_unknown_transaction_errors_as_expected() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    let res = payment_engine.handle_transaction(&mut client_account, resolve(999));
+    let_assert!(Err(PaymentEngineError::TransactionNotFound { id }) = res);
+    assert_eq!(id, TransactionId(999));
 }
 
 fn setup_engine_and_test_account() -> (PaymentEngine, ClientAccount) {
