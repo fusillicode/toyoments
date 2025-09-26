@@ -66,11 +66,12 @@ impl PaymentEngine {
                     })?;
                 }
 
+                // Deposit dispute: move funds from available to held (freeze spendability)
                 if disputable_tx.is_deposit() {
                     crate::account::withdraw_and_hold(client_account, disputable_tx.amount)?;
-                } else {
-                    crate::account::hold(client_account, disputable_tx.amount)?;
                 }
+                // Withdrawal dispute (symmetric freeze model): no immediate balance mutation.
+                // We only mark it disputed; resolution or chargeback will decide funds.
 
                 disputable_tx.is_disputed = true;
             }
@@ -85,7 +86,14 @@ impl PaymentEngine {
                     })?;
                 }
 
-                crate::account::unhold_and_deposit(client_account, disputable_tx.amount)?;
+                if disputable_tx.is_deposit() {
+                    // Resolving a disputed deposit: release held back to available.
+                    crate::account::unhold_and_deposit(client_account, disputable_tx.amount)?;
+                } else {
+                    // Resolving a disputed withdrawal: refund (re-credit) the amount now.
+                    // Original withdrawal already reduced available; a dispute froze it logically.
+                    crate::account::deposit(client_account, disputable_tx.amount)?;
+                }
 
                 disputable_tx.is_disputed = false;
             }
@@ -100,11 +108,11 @@ impl PaymentEngine {
                     })?;
                 }
 
+                // Chargeback of a deposit: permanently remove held funds.
                 if disputable_tx.is_deposit() {
                     crate::account::unhold(client_account, disputable_tx.amount)?;
-                } else {
-                    crate::account::deposit_and_unhold(client_account, disputable_tx.amount)?;
                 }
+                // Chargeback of a withdrawal: do NOT refund; withdrawal stands, but lock account.
                 crate::account::lock(client_account);
 
                 disputable_tx.is_disputed = false;

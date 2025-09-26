@@ -65,6 +65,27 @@ client_id,available,held,total,locked
 - Errors are **non‑blocking** and printed to stderr; processing of subsequent transactions continues.
 - If per‑client fatal semantics become necessary, a strategy is still TBD (e.g. record first error on the account; decide whether to ignore, quarantine, or still apply later transactions).
 
+### Dispute Semantics
+
+Flag‑Only Dispute Handling (no provisional credit for withdrawals). 
+`chargeback` on a withdrawal locks the account without refund (i.e. not a consumer chargeback refund) to:
+
+- Avoid artificial inflation of `total` if "holding" a withdrawal (which already reduced balances).
+- Keep invariants simple with `total` never exceeding true economic value unless an explicit refund occurs.
+
+Deposits:
+
+- dispute: Move disputed amount from `available` to `held` (freeze spendability; `total` unchanged).
+- resolve: Release held funds back to `available` (state returns to pre‑dispute; no net effect).
+- chargeback: Permanently remove held funds and lock the account.
+
+Withdrawals:
+
+- dispute: no immediate balance change (no provisional refund or hold increase).
+- resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
+- chargeback: Lock account without refund (fraud/account risk lock). Withdrawal debit stands.
+
+
 ## Error Handling (Current)
 
 - Deserialization failures: logged, row skipped.
@@ -84,6 +105,7 @@ client_id,available,held,total,locked
 
 ## Future Improvements
 
+- Rename withdrawal `chargeback` path to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win` decisions.
 - Introduce structured error policy (global fatal vs per‑client fatal vs recoverable) and clear exit codes.
 - Slim down error payloads (prefer stable IDs) and improve human‑readable formatting.
 - Abstract account storage behind a trait (enables alternate backends / persistence).

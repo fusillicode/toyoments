@@ -46,13 +46,32 @@ fn handle_transaction_dispute_on_deposit_moves_funds_from_available_to_held() {
 }
 
 #[test]
-fn handle_transaction_dispute_on_withdrawal_holds_without_reducing_available() {
+fn handle_transaction_dispute_on_withdrawal_does_not_change_balances() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(8, "10.00")));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(9, "4.00")));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(9)));
+    // Symmetric freeze model: disputing a withdrawal does NOT immediately refund or hold funds.
     assert_eq!(client_account.available(), dec("6.00"));
-    assert_eq!(client_account.held(), dec("4.00"));
+    assert_eq!(client_account.held(), Decimal::ZERO);
+}
+
+#[test]
+fn handle_transaction_resolve_withdrawal_refunds_amount() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    // Start with 20 available
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(60, "20.00")));
+    // Withdraw 5 -> available 15
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(61, "5.00")));
+    assert_eq!(client_account.available(), dec("15.00"));
+    // Dispute withdrawal (no balance change)
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(61)));
+    assert_eq!(client_account.available(), dec("15.00"));
+    assert_eq!(client_account.held(), Decimal::ZERO);
+    // Resolve withdrawal -> refund 5 (available back to 20)
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, resolve(61)));
+    assert_eq!(client_account.available(), dec("20.00"));
+    assert_eq!(client_account.held(), Decimal::ZERO);
 }
 
 #[test]
@@ -77,13 +96,14 @@ fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
 }
 
 #[test]
-fn handle_transaction_chargeback_on_withdrawal_restores_and_locks() {
+fn handle_transaction_withdrawal_chargeback_behaves_as_fraud_lock_without_refund() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(14, "20.00")));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(15, "5.00")));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(15)));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, chargeback(15)));
-    assert_eq!(client_account.available(), dec("20.00"));
+    // Chargeback of a withdrawal: withdrawal stands (no refund), account locked.
+    assert_eq!(client_account.available(), dec("15.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
     assert!(client_account.is_locked());
 }
@@ -250,6 +270,37 @@ fn handle_transaction_dispute_same_tx_id_different_clients_are_isolated() {
     assert_eq!(client_account_0.held(), dec("5.00"));
     assert_eq!(client_account_1.available(), Decimal::ZERO);
     assert_eq!(client_account_1.held(), dec("7.50"));
+}
+
+#[test]
+fn handle_transaction_resolve_after_withdrawal_fraud_lock_locked_errors_as_expected() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    // Deposit 20, withdraw 5 -> available 15
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(90, "20.00")));
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(91, "5.00")));
+    assert_eq!(client_account.available(), dec("15.00"));
+
+    // Dispute withdrawal (no balance change)
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(91)));
+
+    // Chargeback withdrawal -> locks account, keeps withdrawal effect
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, chargeback(91)));
+    assert!(client_account.is_locked());
+    assert_eq!(client_account.available(), dec("15.00"));
+
+    // Attempt to resolve after chargeback should fail due to locked account (even though no longer disputed)
+    let res = payment_engine.handle_transaction(&mut client_account, resolve(91));
+
+    let_assert!(
+        Err(PaymentEngineError::ClientAccountLocked {
+            client_account: err_account,
+            tx
+        }) = res
+    );
+    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
+    assert_eq!(tx.id(), TransactionId(91));
+    assert_eq!(client_account.available(), dec("15.00"));
+    assert_eq!(client_account.held(), Decimal::ZERO);
 }
 
 fn setup_engine_and_test_account() -> (PaymentEngine, ClientAccount) {
