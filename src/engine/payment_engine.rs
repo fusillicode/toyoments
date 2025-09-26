@@ -13,7 +13,9 @@ mod payment_engine_tests;
 
 #[derive(Default)]
 pub struct PaymentEngine {
-    disputable_txs: HashMap<TransactionId, DisputableTransaction>,
+    /// Disputable transactions indexed by [`ClientId`] and [`TransactionId`] to
+    /// prevent cross‑client overwrites or denial-of-dispute scenarios.
+    disputable_txs: HashMap<(ClientId, TransactionId), DisputableTransaction>,
 }
 
 impl PaymentEngine {
@@ -55,15 +57,7 @@ impl PaymentEngine {
             Transaction::Withdrawal(wd) => crate::account::withdraw(client_account, wd.amount)?,
             Transaction::Dispute(dispute) => {
                 let disputed_tx_id = dispute.id;
-                let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
-
-                if disputable_tx.client_id != client_account.client_id() {
-                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
-                        client_account: *client_account,
-                        tx,
-                        owner_client_id: disputable_tx.client_id,
-                    });
-                }
+                let disputable_tx = self.get_disputable_transaction(client_account.client_id(), disputed_tx_id)?;
 
                 if disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionAlreadyDisputed {
@@ -82,15 +76,7 @@ impl PaymentEngine {
             }
             Transaction::Resolve(resolve) => {
                 let resolvable_tx_id = resolve.id;
-                let disputable_tx = self.get_disputable_transaction(resolvable_tx_id)?;
-
-                if disputable_tx.client_id != client_account.client_id() {
-                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
-                        client_account: *client_account,
-                        tx,
-                        owner_client_id: disputable_tx.client_id,
-                    });
-                }
+                let disputable_tx = self.get_disputable_transaction(client_account.client_id(), resolvable_tx_id)?;
 
                 if !disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionNotDisputed {
@@ -105,15 +91,7 @@ impl PaymentEngine {
             }
             Transaction::Chargeback(chargeback) => {
                 let chargeback_tx_id = chargeback.id;
-                let disputable_tx = self.get_disputable_transaction(chargeback_tx_id)?;
-
-                if disputable_tx.client_id != client_account.client_id() {
-                    return Err(PaymentEngineError::DisputableOwnershipMismatch {
-                        client_account: *client_account,
-                        tx,
-                        owner_client_id: disputable_tx.client_id,
-                    });
-                }
+                let disputable_tx = self.get_disputable_transaction(client_account.client_id(), chargeback_tx_id)?;
 
                 if !disputable_tx.is_disputed {
                     return Err(PaymentEngineError::TransactionNotDisputed {
@@ -134,7 +112,8 @@ impl PaymentEngine {
         }
 
         if let Some(disputable_tx) = Option::<DisputableTransaction>::from(tx) {
-            self.disputable_txs.insert(disputable_tx.id, disputable_tx);
+            let key = (disputable_tx.client_id, disputable_tx.id);
+            self.disputable_txs.insert(key, disputable_tx);
         }
 
         Ok(())
@@ -142,10 +121,11 @@ impl PaymentEngine {
 
     fn get_disputable_transaction(
         &mut self,
+        client_id: ClientId,
         id: TransactionId,
     ) -> Result<&mut DisputableTransaction, PaymentEngineError> {
         self.disputable_txs
-            .get_mut(&id)
+            .get_mut(&(client_id, id))
             .ok_or(PaymentEngineError::TransactionNotFound { id })
     }
 }
@@ -174,14 +154,7 @@ pub enum PaymentEngineError {
         client_account: ClientAccount,
         tx: Transaction,
     },
-    #[error(
-        "disputed transaction ownership mismatch tx={tx:?}, account={client_account:?}, owner_client_id={owner_client_id:?}"
-    )]
-    DisputableOwnershipMismatch {
-        client_account: ClientAccount,
-        tx: Transaction,
-        owner_client_id: ClientId,
-    },
+
     #[error(transparent)]
     ClientAccount(#[from] ClientAccountError),
 }

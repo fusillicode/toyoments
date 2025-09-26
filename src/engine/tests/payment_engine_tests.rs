@@ -254,23 +254,15 @@ fn handle_transaction_dispute_cross_client_without_override_errors_as_expected()
     let mut victim_account = ClientAccount::new(TEST_CLIENT_ID);
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut victim_account, deposit(80, "9.00")));
 
-    // Attacker client 1 disputes victim's transaction id=80 (no overwrite occurred)
+    // Attacker client 1 disputes victim's transaction id=80 -> now simply not found for that client
     let attacker_client_id = ClientId(TEST_CLIENT_ID.0 + 1);
     let mut attacker_account = ClientAccount::new(attacker_client_id);
     let attacker_dispute = dispute_for(attacker_client_id, 80);
 
     let res = payment_engine.handle_transaction(&mut attacker_account, attacker_dispute);
 
-    let_assert!(
-        Err(PaymentEngineError::DisputableOwnershipMismatch {
-            client_account: err_account,
-            tx,
-            owner_client_id
-        }) = res
-    );
-    assert_eq!(err_account.client_id(), attacker_client_id);
-    assert_eq!(tx.id(), TransactionId(80));
-    assert_eq!(owner_client_id, TEST_CLIENT_ID);
+    let_assert!(Err(PaymentEngineError::TransactionNotFound { id }) = res);
+    assert_eq!(id, TransactionId(80));
     // Victim account intact
     assert_eq!(victim_account.available(), dec("9.00"));
     assert_eq!(victim_account.held(), Decimal::ZERO);
@@ -280,37 +272,28 @@ fn handle_transaction_dispute_cross_client_without_override_errors_as_expected()
 }
 
 #[test]
-fn handle_transaction_dispute_cross_client_ownership_mismatch_errors_as_expected() {
-    // Client 0 deposits tx id=70
+fn handle_transaction_dispute_same_tx_id_different_clients_are_isolated() {
     let mut payment_engine = PaymentEngine::default();
+    // Client 0 deposit tx=70
     let mut client_account_0 = ClientAccount::new(TEST_CLIENT_ID);
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_0, deposit(70, "5.00")));
 
-    // Client 1 deposits with SAME tx id=70 overwriting disputable entry
+    // Client 1 deposit with SAME tx id=70 (allowed; separate namespace)
     let client1_id = ClientId(TEST_CLIENT_ID.0 + 1);
     let mut client_account_1 = ClientAccount::new(client1_id);
     let other_deposit = deposit_for(client1_id, 70, "7.50");
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_1, other_deposit));
 
-    // Client 0 disputes id=70 but ownership now belongs to client 1
-    let res = payment_engine.handle_transaction(&mut client_account_0, dispute(70));
+    // Both can independently dispute their own tx id=70
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_0, dispute(70)));
+    let client1_dispute = dispute_for(client1_id, 70);
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account_1, client1_dispute));
 
-    let_assert!(
-        Err(PaymentEngineError::DisputableOwnershipMismatch {
-            client_account: err_account,
-            tx,
-            owner_client_id
-        }) = res
-    );
-    assert_eq!(err_account.client_id(), TEST_CLIENT_ID);
-    assert_eq!(tx.id(), TransactionId(70));
-    assert_eq!(owner_client_id, client1_id);
-    // Balances unchanged for client 0
-    assert_eq!(client_account_0.available(), dec("5.00"));
-    assert_eq!(client_account_0.held(), Decimal::ZERO);
-    // Client 1 unaffected (deposit remained)
-    assert_eq!(client_account_1.available(), dec("7.50"));
-    assert_eq!(client_account_1.held(), Decimal::ZERO);
+    // Balances reflect held amounts separately
+    assert_eq!(client_account_0.available(), Decimal::ZERO);
+    assert_eq!(client_account_0.held(), dec("5.00"));
+    assert_eq!(client_account_1.available(), Decimal::ZERO);
+    assert_eq!(client_account_1.held(), dec("7.50"));
 }
 
 fn setup_engine_and_test_account() -> (PaymentEngine, ClientAccount) {
