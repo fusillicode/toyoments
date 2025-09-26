@@ -7,8 +7,8 @@ use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 
 #[cfg(test)]
-#[path = "tests/payment_engine_tests.rs"]
-mod payment_engine_tests;
+#[path = "./tests/handle_transaction_tests.rs"]
+mod handle_transaction_tests;
 
 pub struct PaymentEngine {
     disputable_txs: HashMap<TransactionId, DisputableTransaction>,

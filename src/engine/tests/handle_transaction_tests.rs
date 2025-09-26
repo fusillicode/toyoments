@@ -15,7 +15,7 @@ use crate::transaction::TransactionId;
 use crate::transaction::Withdrawal;
 
 #[test]
-fn handle_transaction_deposit_increases_available() {
+fn deposit_increases_available() {
     let client_id = ClientId(1);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -27,7 +27,7 @@ fn handle_transaction_deposit_increases_available() {
 }
 
 #[test]
-fn handle_transaction_withdrawal_reduces_available() {
+fn withdrawal_reduces_available() {
     let client_id = ClientId(2);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -42,7 +42,7 @@ fn handle_transaction_withdrawal_reduces_available() {
 }
 
 #[test]
-fn handle_transaction_withdrawal_insufficient_funds_errors() {
+fn withdrawal_insufficient_funds_errors() {
     let client_id = ClientId(3);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -54,7 +54,7 @@ fn handle_transaction_withdrawal_insufficient_funds_errors() {
 }
 
 #[test]
-fn handle_transaction_dispute_on_deposit_moves_funds_from_available_to_held() {
+fn dispute_on_deposit_moves_funds_from_available_to_held() {
     let client_id = ClientId(4);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -69,7 +69,7 @@ fn handle_transaction_dispute_on_deposit_moves_funds_from_available_to_held() {
 }
 
 #[test]
-fn handle_transaction_dispute_on_withdrawal_holds_without_reducing_available() {
+fn dispute_on_withdrawal_holds_without_reducing_available() {
     let client_id = ClientId(5);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -87,7 +87,7 @@ fn handle_transaction_dispute_on_withdrawal_holds_without_reducing_available() {
 }
 
 #[test]
-fn handle_transaction_resolve_releases_held_into_available() {
+fn resolve_releases_held_into_available() {
     let client_id = ClientId(6);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -105,7 +105,7 @@ fn handle_transaction_resolve_releases_held_into_available() {
 }
 
 #[test]
-fn handle_transaction_resolve_without_dispute_errors() {
+fn resolve_without_dispute_errors() {
     let client_id = ClientId(7);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -119,7 +119,7 @@ fn handle_transaction_resolve_without_dispute_errors() {
 }
 
 #[test]
-fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
+fn chargeback_on_deposit_removes_and_locks() {
     let client_id = ClientId(8);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -138,7 +138,7 @@ fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
 }
 
 #[test]
-fn handle_transaction_chargeback_on_withdrawal_restores_and_locks() {
+fn chargeback_on_withdrawal_restores_and_locks() {
     let client_id = ClientId(9);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -160,7 +160,7 @@ fn handle_transaction_chargeback_on_withdrawal_restores_and_locks() {
 }
 
 #[test]
-fn handle_transaction_unrelated_client_errors() {
+fn unrelated_client_errors() {
     let client_id = ClientId(10);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
@@ -176,7 +176,7 @@ fn handle_transaction_unrelated_client_errors() {
 }
 
 #[test]
-fn handle_transaction_locked_account_rejects_new_transaction() {
+fn locked_account_rejects_new_transaction() {
     let client_id = ClientId(12);
     let mut client_account = ClientAccount::new(client_id);
     let mut payment_engine = PaymentEngine::new();
