@@ -1,3 +1,4 @@
+use color_eyre::eyre::OptionExt;
 use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -10,7 +11,7 @@ where
 {
     let mut writer = Writer::from_writer(std::io::stdout());
     for client_account in clients_accounts {
-        writer.serialize(ClientAccountReport::from(client_account))?;
+        writer.serialize(ClientAccountReport::try_from(client_account)?)?;
     }
     writer.flush()?;
     Ok(())
@@ -25,14 +26,18 @@ struct ClientAccountReport {
     locked: bool,
 }
 
-impl From<&ClientAccount> for ClientAccountReport {
-    fn from(client_account: &ClientAccount) -> Self {
-        Self {
+impl TryFrom<&ClientAccount> for ClientAccountReport {
+    type Error = color_eyre::Report;
+
+    fn try_from(client_account: &ClientAccount) -> Result<Self, Self::Error> {
+        Ok(Self {
             client_id: client_account.client_id(),
             available: client_account.available(),
             held: client_account.held(),
-            total: client_account.total(),
+            total: client_account.total().ok_or_eyre(format!(
+                "overflow in total calculation for client_account={client_account:?}]"
+            ))?,
             locked: client_account.is_locked(),
-        }
+        })
     }
 }

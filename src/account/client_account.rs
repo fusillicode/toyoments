@@ -36,8 +36,7 @@ impl ClientAccount {
         self.locked
     }
 
-    #[allow(clippy::arithmetic_side_effects)]
-    pub fn total(&self) -> Decimal {
-        self.available + self.held
+    pub fn total(&self) -> Option<Decimal> {
+        self.available.checked_add(self.held)
     }
 }
