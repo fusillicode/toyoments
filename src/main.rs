@@ -1,7 +1,6 @@
 use color_eyre::eyre::OptionExt as _;
 use csv::ReaderBuilder;
 use csv::Trim;
-
 use toyments::account::ClientsAccounts;
 use toyments::engine::PaymentEngine;
 use toyments::transaction::Transaction;
@@ -15,8 +14,8 @@ fn main() -> color_eyre::Result<()> {
 
     let mut tx_file_reader = ReaderBuilder::new().trim(Trim::All).from_path(tx_file_path)?;
 
-    let mut clients_accounts = ClientsAccounts::new();
-    let mut payment_engine = PaymentEngine::new();
+    let mut clients_accounts = ClientsAccounts::default();
+    let mut payment_engine = PaymentEngine::default();
 
     for tx_res in tx_file_reader.deserialize::<Transaction>() {
         let Ok(tx) = tx_res else {

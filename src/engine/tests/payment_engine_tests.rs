@@ -238,7 +238,7 @@ fn handle_transaction_on_locked_account_errors_as_expected() {
 }
 
 fn setup_engine_and_test_account() -> (PaymentEngine, ClientAccount) {
-    (PaymentEngine::new(), ClientAccount::new(TEST_CLIENT_ID))
+    (PaymentEngine::default(), ClientAccount::new(TEST_CLIENT_ID))
 }
 
 fn deposit(transaction_id: u32, amount: &str) -> Transaction {

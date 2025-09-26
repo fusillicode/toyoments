@@ -10,17 +10,25 @@ use crate::transaction::TransactionId;
 #[path = "./tests/payment_engine_tests.rs"]
 mod payment_engine_tests;
 
+#[derive(Default)]
 pub struct PaymentEngine {
     disputable_txs: HashMap<TransactionId, DisputableTransaction>,
 }
 
 impl PaymentEngine {
-    pub fn new() -> Self {
-        Self {
-            disputable_txs: HashMap::new(),
-        }
-    }
-
+    /// Processes a single transaction by mutating the provided [`ClientAccount`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The transaction refers to an account that is not the one supplied ([`PaymentEngineError::UnrelatedTransaction`]).
+    /// - The account is locked ([`PaymentEngineError::ClientAccountLocked`]).
+    /// - A dispute action references a transaction that does not exist ([`PaymentEngineError::TransactionNotFound`]).
+    /// - A dispute is initiated on an already disputed transaction
+    ///   ([`PaymentEngineError::TransactionAlreadyDisputed`]).
+    /// - A resolve or chargeback targets a transaction not currently disputed
+    ///   ([`PaymentEngineError::TransactionNotDisputed`]).
+    /// - An underlying account funds operation fails (wrapped in [`PaymentEngineError::ClientAccount`]).
     pub fn handle_transaction(
         &mut self,
         client_account: &mut ClientAccount,

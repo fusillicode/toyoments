@@ -16,13 +16,10 @@ pub use client_account_ops::unhold_and_deposit;
 pub use client_account_ops::withdraw;
 pub use client_account_ops::withdraw_and_hold;
 
+#[derive(Default)]
 pub struct ClientsAccounts(HashMap<ClientId, ClientAccount>);
 
 impl ClientsAccounts {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
     pub fn get_or_create_new_account(&mut self, client_id: ClientId) -> &mut ClientAccount {
         self.0.entry(client_id).or_insert_with(|| ClientAccount::new(client_id))
     }
