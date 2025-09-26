@@ -3,7 +3,7 @@ use std::str::FromStr;
 use rust_decimal::Decimal;
 
 use crate::account::ClientAccount;
-use crate::payment_engine::PaymentEngine;
+use crate::engine::PaymentEngine;
 use crate::transaction::Chargeback;
 use crate::transaction::ClientId;
 use crate::transaction::Deposit;

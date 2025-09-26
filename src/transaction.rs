@@ -137,7 +137,7 @@ pub struct Chargeback {
     pub id: TransactionId,
 }
 
-/// This permits to avoid checks on negative amount while processing transactions.
+/// This permits to avoid checks on negative amount while handling transactions.
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PositiveAmount(Decimal);
