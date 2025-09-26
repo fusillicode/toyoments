@@ -1,18 +1,14 @@
 use color_eyre::eyre::OptionExt as _;
 use csv::ReaderBuilder;
 use csv::Trim;
-use csv::Writer;
-use rust_decimal::Decimal;
-use serde::Serialize;
 
-use crate::account::ClientAccount;
 use crate::account::ClientsAccounts;
 use crate::payment_engine::PaymentEngine;
-use crate::transaction::ClientId;
 use crate::transaction::Transaction;
 
 mod account;
 mod payment_engine;
+mod report;
 mod transaction;
 
 fn main() -> color_eyre::Result<()> {
@@ -40,31 +36,7 @@ fn main() -> color_eyre::Result<()> {
         }
     }
 
-    let mut writer = Writer::from_writer(std::io::stdout());
-    for (_, client_account) in clients_accounts.as_inner().iter() {
-        writer.serialize(ClientAccountReport::from(client_account))?
-    }
+    report::write_csv_to_stdout(clients_accounts.as_inner().values())?;
 
     Ok(())
-}
-
-#[derive(Serialize)]
-pub struct ClientAccountReport {
-    client_id: ClientId,
-    available: Decimal,
-    held: Decimal,
-    total: Decimal,
-    locked: bool,
-}
-
-impl From<&ClientAccount> for ClientAccountReport {
-    fn from(client_account: &ClientAccount) -> Self {
-        Self {
-            client_id: client_account.client_id(),
-            available: client_account.available(),
-            held: client_account.held(),
-            total: client_account.total(),
-            locked: client_account.is_locked(),
-        }
-    }
 }
