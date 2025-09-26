@@ -182,19 +182,19 @@ mod tests {
 
     #[rstest]
     #[case(
-        "deposit,1,10,1.25",
+        "deposit,20,30,1.2345",
         Transaction::Deposit(Deposit {
-            client_id: ClientId(1),
-            id: TransactionId(10),
-            amount: PositiveAmount(Decimal::from_str("1.25").unwrap()),
+            client_id: ClientId(20),
+            id: TransactionId(30),
+            amount: PositiveAmount(Decimal::from_str("1.2345").unwrap()),
         })
     )]
     #[case(
-        "withdrawal,2,11,2.00",
+        "withdrawal,21,31,2.0001",
         Transaction::Withdrawal(Withdrawal {
-            client_id: ClientId(2),
-            id: TransactionId(11),
-            amount: PositiveAmount(Decimal::from_str("2.00").unwrap()),
+            client_id: ClientId(21),
+            id: TransactionId(31),
+            amount: PositiveAmount(Decimal::from_str("2.0001").unwrap()),
         })
     )]
     #[case(
