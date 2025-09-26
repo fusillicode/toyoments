@@ -2,8 +2,8 @@ use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-use crate::account::ClientAccount;
-use crate::transaction::ClientId;
+use toyments::account::ClientAccount;
+use toyments::transaction::ClientId;
 
 pub fn write_csv_to_stdout<'a, I>(clients_accounts: I) -> color_eyre::Result<()>
 where

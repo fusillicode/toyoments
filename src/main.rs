@@ -2,14 +2,11 @@ use color_eyre::eyre::OptionExt as _;
 use csv::ReaderBuilder;
 use csv::Trim;
 
-use crate::account::ClientsAccounts;
-use crate::engine::PaymentEngine;
-use crate::transaction::Transaction;
+use toyments::account::ClientsAccounts;
+use toyments::engine::PaymentEngine;
+use toyments::transaction::Transaction;
 
-mod account;
-mod engine;
 mod report;
-mod transaction;
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
