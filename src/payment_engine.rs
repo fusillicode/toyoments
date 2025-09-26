@@ -2,6 +2,14 @@ use std::collections::HashMap;
 
 use crate::clients_accounts::ClientAccount;
 use crate::clients_accounts::ClientAccountError;
+use crate::clients_accounts::deposit;
+use crate::clients_accounts::deposit_and_unhold;
+use crate::clients_accounts::hold;
+use crate::clients_accounts::lock;
+use crate::clients_accounts::unhold;
+use crate::clients_accounts::unhold_and_deposit;
+use crate::clients_accounts::withdraw;
+use crate::clients_accounts::withdraw_and_hold;
 use crate::transaction::PositiveAmount;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
@@ -33,7 +41,7 @@ impl PaymentEngine {
             })?;
         }
 
-        if client_account.locked() {
+        if client_account.is_locked() {
             return Err(PaymentEngineError::ClientAccountLocked {
                 client_account: *client_account,
                 tx,
@@ -41,8 +49,8 @@ impl PaymentEngine {
         }
 
         match tx {
-            Transaction::Deposit(deposit) => client_account.deposit(deposit.amount)?,
-            Transaction::Withdrawal(withdrawal) => client_account.withdraw(withdrawal.amount)?,
+            Transaction::Deposit(dep) => deposit(client_account, dep.amount)?,
+            Transaction::Withdrawal(wd) => withdraw(client_account, wd.amount)?,
             Transaction::Dispute(dispute) => {
                 let disputed_tx_id = dispute.id;
                 let disputable_tx = self.get_disputable_transaction(disputed_tx_id)?;
@@ -55,9 +63,9 @@ impl PaymentEngine {
                 }
 
                 if disputable_tx.is_deposit() {
-                    client_account.withdraw_and_hold(disputable_tx.amount)?;
+                    withdraw_and_hold(client_account, disputable_tx.amount)?;
                 } else {
-                    client_account.hold(disputable_tx.amount)?;
+                    hold(client_account, disputable_tx.amount)?;
                 }
 
                 disputable_tx.is_disputed = true;
@@ -73,7 +81,7 @@ impl PaymentEngine {
                     })?;
                 }
 
-                client_account.unhold_and_deposit(disputable_tx.amount)?;
+                unhold_and_deposit(client_account, disputable_tx.amount)?;
 
                 disputable_tx.is_disputed = false;
             }
@@ -89,11 +97,11 @@ impl PaymentEngine {
                 }
 
                 if disputable_tx.is_deposit() {
-                    client_account.unhold(disputable_tx.amount)?;
+                    unhold(client_account, disputable_tx.amount)?;
                 } else {
-                    client_account.deposit_and_unhold(disputable_tx.amount)?;
+                    deposit_and_unhold(client_account, disputable_tx.amount)?;
                 }
-                client_account.lock();
+                lock(client_account);
 
                 disputable_tx.is_disputed = false;
             }

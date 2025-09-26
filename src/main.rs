@@ -5,8 +5,8 @@ use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-use crate::clients_accounts::ClientAccount;
 use crate::clients_accounts::ClientsAccounts;
+use crate::clients_accounts::client_account::ClientAccount;
 use crate::payment_engine::PaymentEngine;
 use crate::transaction::ClientId;
 use crate::transaction::Transaction;
@@ -64,7 +64,7 @@ impl From<&ClientAccount> for ClientAccountReport {
             available: client_account.available(),
             held: client_account.held(),
             total: client_account.total(),
-            locked: client_account.locked(),
+            locked: client_account.is_locked(),
         }
     }
 }

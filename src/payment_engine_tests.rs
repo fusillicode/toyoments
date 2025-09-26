@@ -2,8 +2,8 @@ use std::str::FromStr;
 
 use rust_decimal::Decimal;
 
+use crate::clients_accounts::client_account::ClientAccount;
 use crate::payment_engine::PaymentEngine;
-use crate::clients_accounts::ClientAccount;
 use crate::transaction::Chargeback;
 use crate::transaction::ClientId;
 use crate::transaction::Deposit;
@@ -134,7 +134,7 @@ fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
         .unwrap();
     assert_eq!(client_account.available(), Decimal::ZERO);
     assert_eq!(client_account.held(), Decimal::ZERO);
-    assert!(client_account.locked());
+    assert!(client_account.is_locked());
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn handle_transaction_chargeback_on_withdrawal_restores_and_locks() {
         .unwrap();
     assert_eq!(client_account.available(), dec("20.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
-    assert!(client_account.locked());
+    assert!(client_account.is_locked());
 }
 
 #[test]
@@ -189,7 +189,7 @@ fn handle_transaction_locked_account_rejects_new_transaction() {
     payment_engine
         .handle_transaction(&mut client_account, chargeback(client_id, TransactionId(40)))
         .unwrap();
-    assert!(client_account.locked());
+    assert!(client_account.is_locked());
     let result = payment_engine.handle_transaction(&mut client_account, deposit(client_id, TransactionId(41), "1.00"));
     assert!(result.is_err());
     assert_eq!(client_account.available(), Decimal::ZERO);
