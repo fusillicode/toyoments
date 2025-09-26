@@ -3,16 +3,16 @@ use std::str::FromStr;
 use rust_decimal::Decimal;
 
 use crate::payment_engine::PaymentEngine;
-use crate::models::clients_accounts::ClientAccount;
-use crate::models::csv_models::Chargeback;
-use crate::models::csv_models::ClientId;
-use crate::models::csv_models::Deposit;
-use crate::models::csv_models::Dispute;
-use crate::models::csv_models::PositiveAmount;
-use crate::models::csv_models::Resolve;
-use crate::models::csv_models::Transaction;
-use crate::models::csv_models::TransactionId;
-use crate::models::csv_models::Withdrawal;
+use crate::clients_accounts::ClientAccount;
+use crate::transaction::Chargeback;
+use crate::transaction::ClientId;
+use crate::transaction::Deposit;
+use crate::transaction::Dispute;
+use crate::transaction::PositiveAmount;
+use crate::transaction::Resolve;
+use crate::transaction::Transaction;
+use crate::transaction::TransactionId;
+use crate::transaction::Withdrawal;
 
 #[test]
 fn handle_transaction_deposit_increases_available() {

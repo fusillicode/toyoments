@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use rust_decimal::Decimal;
 
-use crate::models::csv_models::ClientId;
-use crate::models::csv_models::PositiveAmount;
+use crate::transaction::ClientId;
+use crate::transaction::PositiveAmount;
 
 pub struct ClientsAccounts(HashMap<ClientId, ClientAccount>);
 

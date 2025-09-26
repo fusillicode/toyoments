@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use crate::models::clients_accounts::ClientAccount;
-use crate::models::clients_accounts::ClientAccountError;
-use crate::models::csv_models::PositiveAmount;
-use crate::models::csv_models::Transaction;
-use crate::models::csv_models::TransactionId;
+use crate::clients_accounts::ClientAccount;
+use crate::clients_accounts::ClientAccountError;
+use crate::transaction::PositiveAmount;
+use crate::transaction::Transaction;
+use crate::transaction::TransactionId;
 
 #[cfg(test)]
 #[path = "./payment_engine_tests.rs"]
