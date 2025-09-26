@@ -7,8 +7,8 @@ use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 
 #[cfg(test)]
-#[path = "./tests/handle_transaction_tests.rs"]
-mod handle_transaction_tests;
+#[path = "./tests/payment_engine_tests.rs"]
+mod payment_engine_tests;
 
 pub struct PaymentEngine {
     disputable_txs: HashMap<TransactionId, DisputableTransaction>,
@@ -25,7 +25,7 @@ impl PaymentEngine {
         &mut self,
         client_account: &mut ClientAccount,
         tx: Transaction,
-    ) -> color_eyre::Result<()> {
+    ) -> Result<(), PaymentEngineError> {
         if client_account.client_id() != tx.client_id() {
             return Err(PaymentEngineError::UnrelatedTransaction {
                 client_account: *client_account,

@@ -38,7 +38,7 @@ impl From<Transaction> for Option<DisputableTransaction> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum DisputableTransactionKind {
+pub(in crate::engine) enum DisputableTransactionKind {
     Deposit,
     Withdrawal,
 }
