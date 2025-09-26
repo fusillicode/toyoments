@@ -11,7 +11,7 @@ pub struct DisputableTransaction {
 }
 
 impl DisputableTransaction {
-    pub fn is_deposit(&self) -> bool {
+    pub const fn is_deposit(&self) -> bool {
         self.kind.is_deposit()
     }
 }
@@ -44,7 +44,7 @@ pub(in crate::engine) enum DisputableTransactionKind {
 }
 
 impl DisputableTransactionKind {
-    fn is_deposit(&self) -> bool {
+    const fn is_deposit(self) -> bool {
         match self {
             Self::Deposit => true,
             Self::Withdrawal => false,

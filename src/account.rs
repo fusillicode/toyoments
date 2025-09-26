@@ -24,10 +24,10 @@ impl ClientsAccounts {
     }
 
     pub fn get_or_create_new_account(&mut self, client_id: ClientId) -> &mut ClientAccount {
-        self.0.entry(client_id).or_insert(ClientAccount::new(client_id))
+        self.0.entry(client_id).or_insert_with(|| ClientAccount::new(client_id))
     }
 
-    pub fn as_inner(&self) -> &HashMap<ClientId, ClientAccount> {
+    pub const fn as_inner(&self) -> &HashMap<ClientId, ClientAccount> {
         &self.0
     }
 }

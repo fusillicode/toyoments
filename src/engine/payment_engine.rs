@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::account::ClientAccount;
 use crate::account::ClientAccountError;
-use crate::engine::disputable::DisputableTransaction;
+use crate::engine::disputable_transaction::DisputableTransaction;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 
@@ -97,7 +97,7 @@ impl PaymentEngine {
 
                 disputable_tx.is_disputed = false;
             }
-        };
+        }
 
         if let Some(disputable_tx) = Option::<DisputableTransaction>::from(tx) {
             self.disputable_txs.insert(disputable_tx.id, disputable_tx);

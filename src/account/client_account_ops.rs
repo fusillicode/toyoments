@@ -17,10 +17,6 @@ pub enum ClientAccountError {
     },
 }
 
-pub fn lock(client_account: &mut ClientAccount) {
-    client_account.locked = true;
-}
-
 pub fn deposit(client_account: &mut ClientAccount, amount: PositiveAmount) -> Result<(), ClientAccountError> {
     client_account.available = checked_add_to_available(client_account, amount)?;
     Ok(())
@@ -39,6 +35,10 @@ pub fn hold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Resul
 pub fn unhold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Result<(), ClientAccountError> {
     client_account.held = checked_sub_from_held(client_account, amount)?;
     Ok(())
+}
+
+pub const fn lock(client_account: &mut ClientAccount) {
+    client_account.locked = true;
 }
 
 pub fn withdraw_and_hold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Result<(), ClientAccountError> {
@@ -114,14 +114,14 @@ fn checked_sub_from_held(
         .ok_or_else(|| overflow_error(client_account, amount))
 }
 
-fn overflow_error(client_account: &ClientAccount, amount: PositiveAmount) -> ClientAccountError {
+const fn overflow_error(client_account: &ClientAccount, amount: PositiveAmount) -> ClientAccountError {
     ClientAccountError::OperationOverflow {
         client_account: *client_account,
         amount,
     }
 }
 
-fn insufficient_funds_error(client_account: &ClientAccount, amount: PositiveAmount) -> ClientAccountError {
+const fn insufficient_funds_error(client_account: &ClientAccount, amount: PositiveAmount) -> ClientAccountError {
     ClientAccountError::InsufficientFunds {
         client_account: *client_account,
         amount,

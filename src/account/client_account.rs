@@ -11,7 +11,7 @@ pub struct ClientAccount {
 }
 
 impl ClientAccount {
-    pub fn new(client_id: ClientId) -> Self {
+    pub const fn new(client_id: ClientId) -> Self {
         Self {
             client_id,
             available: Decimal::ZERO,
@@ -20,22 +20,23 @@ impl ClientAccount {
         }
     }
 
-    pub fn client_id(&self) -> ClientId {
+    pub const fn client_id(&self) -> ClientId {
         self.client_id
     }
 
-    pub fn available(&self) -> Decimal {
+    pub const fn available(&self) -> Decimal {
         self.available
     }
 
-    pub fn held(&self) -> Decimal {
+    pub const fn held(&self) -> Decimal {
         self.held
     }
 
-    pub fn is_locked(&self) -> bool {
+    pub const fn is_locked(&self) -> bool {
         self.locked
     }
 
+    #[allow(clippy::arithmetic_side_effects)]
     pub fn total(&self) -> Decimal {
         self.available + self.held
     }

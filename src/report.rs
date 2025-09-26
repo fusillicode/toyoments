@@ -10,7 +10,7 @@ where
     I: IntoIterator<Item = &'a ClientAccount>,
 {
     let mut writer = Writer::from_writer(std::io::stdout());
-    for client_account in clients_accounts.into_iter() {
+    for client_account in clients_accounts {
         writer.serialize(ClientAccountReport::from(client_account))?;
     }
     writer.flush()?;

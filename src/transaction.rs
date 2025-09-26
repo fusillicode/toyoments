@@ -11,7 +11,7 @@ pub struct ClientId(pub u16);
 pub struct TransactionId(pub u32);
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Transaction {
     Deposit(Deposit),
     Withdrawal(Withdrawal),
@@ -21,23 +21,23 @@ pub enum Transaction {
 }
 
 impl Transaction {
-    pub fn id(&self) -> TransactionId {
+    pub const fn id(&self) -> TransactionId {
         match self {
-            Transaction::Deposit(Deposit { id, .. })
-            | Transaction::Withdrawal(Withdrawal { id, .. })
-            | Transaction::Dispute(Dispute { id, .. })
-            | Transaction::Resolve(Resolve { id, .. })
-            | Transaction::Chargeback(Chargeback { id, .. }) => *id,
+            Self::Deposit(Deposit { id, .. })
+            | Self::Withdrawal(Withdrawal { id, .. })
+            | Self::Dispute(Dispute { id, .. })
+            | Self::Resolve(Resolve { id, .. })
+            | Self::Chargeback(Chargeback { id, .. }) => *id,
         }
     }
 
-    pub fn client_id(&self) -> ClientId {
+    pub const fn client_id(&self) -> ClientId {
         match self {
-            Transaction::Deposit(Deposit { client_id, .. })
-            | Transaction::Withdrawal(Withdrawal { client_id, .. })
-            | Transaction::Dispute(Dispute { client_id, .. })
-            | Transaction::Resolve(Resolve { client_id, .. })
-            | Transaction::Chargeback(Chargeback { client_id, .. }) => *client_id,
+            Self::Deposit(Deposit { client_id, .. })
+            | Self::Withdrawal(Withdrawal { client_id, .. })
+            | Self::Dispute(Dispute { client_id, .. })
+            | Self::Resolve(Resolve { client_id, .. })
+            | Self::Chargeback(Chargeback { client_id, .. }) => *client_id,
         }
     }
 }
@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for Transaction {
             "deposit" => row.amount.map_or_else(
                 || Err(serde::de::Error::missing_field("amount")),
                 |amount| {
-                    Ok(Transaction::Deposit(Deposit {
+                    Ok(Self::Deposit(Deposit {
                         client_id: row.client,
                         id: row.tx,
                         amount,
@@ -71,22 +71,22 @@ impl<'de> Deserialize<'de> for Transaction {
             "withdrawal" => row.amount.map_or_else(
                 || Err(serde::de::Error::missing_field("amount")),
                 |amount| {
-                    Ok(Transaction::Withdrawal(Withdrawal {
+                    Ok(Self::Withdrawal(Withdrawal {
                         client_id: row.client,
                         id: row.tx,
                         amount,
                     }))
                 },
             ),
-            "dispute" => Ok(Transaction::Dispute(Dispute {
+            "dispute" => Ok(Self::Dispute(Dispute {
                 client_id: row.client,
                 id: row.tx,
             })),
-            "resolve" => Ok(Transaction::Resolve(Resolve {
+            "resolve" => Ok(Self::Resolve(Resolve {
                 client_id: row.client,
                 id: row.tx,
             })),
-            "chargeback" => Ok(Transaction::Chargeback(Chargeback {
+            "chargeback" => Ok(Self::Chargeback(Chargeback {
                 client_id: row.client,
                 id: row.tx,
             })),
@@ -101,7 +101,7 @@ impl<'de> Deserialize<'de> for Transaction {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Deposit {
     pub client_id: ClientId,
     pub id: TransactionId,
@@ -109,7 +109,7 @@ pub struct Deposit {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Withdrawal {
     pub client_id: ClientId,
     pub id: TransactionId,
@@ -117,21 +117,21 @@ pub struct Withdrawal {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Dispute {
     pub client_id: ClientId,
     pub id: TransactionId,
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Resolve {
     pub client_id: ClientId,
     pub id: TransactionId,
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Chargeback {
     pub client_id: ClientId,
     pub id: TransactionId,
@@ -139,7 +139,7 @@ pub struct Chargeback {
 
 /// This permits to avoid checks on negative amount while handling transactions.
 #[derive(Debug, Copy, Clone)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PositiveAmount(Decimal);
 
 impl TryFrom<Decimal> for PositiveAmount {
@@ -154,7 +154,7 @@ impl TryFrom<Decimal> for PositiveAmount {
 }
 
 impl PositiveAmount {
-    pub fn as_inner(&self) -> Decimal {
+    pub const fn as_inner(&self) -> Decimal {
         self.0
     }
 }
@@ -165,7 +165,7 @@ impl<'de> Deserialize<'de> for PositiveAmount {
         D: Deserializer<'de>,
     {
         let decimal = <Decimal as serde::Deserialize>::deserialize(deserializer)?;
-        PositiveAmount::try_from(decimal).map_err(|error| serde::de::Error::custom(error.to_string()))
+        Self::try_from(decimal).map_err(|error| serde::de::Error::custom(error.to_string()))
     }
 }
 
@@ -236,8 +236,7 @@ mod tests {
         assert2::let_assert!(Err(error) = deserialize_csv_rows(csv_row));
         assert!(
             error.to_string().contains(expected_substr),
-            "error={:?} does not contain expected={expected_substr}'",
-            error
+            "error={error:?} does not contain expected={expected_substr}'",
         );
     }
 

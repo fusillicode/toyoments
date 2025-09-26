@@ -2,6 +2,12 @@
 name = "toyments"
 version = "0.1.0"
 edition = "2024"
+description = "Toy payment engine"
+license = "LICENSE"
+repository = "https://github.com/fusillicode/toyoments"
+readme = "README.md"
+keywords = ["toyments"]
+categories = ["cli"]
 
 [dependencies]
 color-eyre = { version = "0.6" }

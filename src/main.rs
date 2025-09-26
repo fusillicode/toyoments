@@ -32,7 +32,7 @@ fn main() -> color_eyre::Result<()> {
         if let Err(error) = payment_engine.handle_transaction(client_account, tx) {
             eprintln!(
                 "error handling transaction for client account, tx={tx:?}, client_account={client_account:?}, error={error:?}"
-            )
+            );
         }
     }
 
