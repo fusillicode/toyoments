@@ -5,7 +5,7 @@ use toyments::account::ClientsAccounts;
 use toyments::engine::PaymentEngine;
 use toyments::transaction::Transaction;
 
-mod report;
+mod csv_report;
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -32,7 +32,7 @@ fn main() -> color_eyre::Result<()> {
         }
     }
 
-    report::write_csv_to_stdout(clients_accounts.as_inner().values())?;
+    csv_report::write_to_stdout(clients_accounts.as_inner().values())?;
 
     Ok(())
 }

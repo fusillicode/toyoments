@@ -21,7 +21,8 @@ impl PaymentEngine {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The transaction refers to an account that is not the one supplied ([`PaymentEngineError::UnrelatedTransaction`]).
+    /// - The transaction refers to an account that is not the one supplied
+    ///   ([`PaymentEngineError::UnrelatedTransaction`]).
     /// - The account is locked ([`PaymentEngineError::ClientAccountLocked`]).
     /// - A dispute action references a transaction that does not exist ([`PaymentEngineError::TransactionNotFound`]).
     /// - A dispute is initiated on an already disputed transaction

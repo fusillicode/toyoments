@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ClientId(pub u16);
 
 #[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]

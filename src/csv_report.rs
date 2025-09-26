@@ -5,15 +5,39 @@ use serde::Serialize;
 use toyments::account::ClientAccount;
 use toyments::transaction::ClientId;
 
-pub fn write_csv_to_stdout<'a, I>(clients_accounts: I) -> color_eyre::Result<()>
+/// Write the supplied `ClientAccount`s to stdout as CSV in ascending `client_id` order.
+///
+/// # Rationale
+/// Deterministic ordering (sorted by `client_id`) yields reproducible output,
+/// simpler diffs, and stable snapshot tests while retaining a `HashMap` for
+/// amortized O(1) updates.
+///
+/// # Approach
+/// Collect references, perform a one‑shot O(n log n) sort at report time, then
+/// serialize to CSV.
+///
+/// # Alternative
+/// Using a `BTreeMap` would provide inherent ordering but impose O(log n) on every
+/// mutation even if no report is emitted.
+///
+/// # Errors
+/// Returns an error if:
+/// - Computing `total` overflows (from [`ClientAccountReport::try_from`]).
+/// - Serializing a row fails ([`csv::Error`]).
+/// - Flushing stdout fails (I/O error).
+pub fn write_to_stdout<'a, I>(clients_accounts: I) -> color_eyre::Result<()>
 where
     I: IntoIterator<Item = &'a ClientAccount>,
 {
+    let mut accounts: Vec<&ClientAccount> = clients_accounts.into_iter().collect();
+    accounts.sort_unstable_by_key(|acc| acc.client_id());
+
     let mut writer = Writer::from_writer(std::io::stdout());
-    for client_account in clients_accounts {
+    for client_account in accounts {
         writer.serialize(ClientAccountReport::try_from(client_account)?)?;
     }
     writer.flush()?;
+
     Ok(())
 }
 
