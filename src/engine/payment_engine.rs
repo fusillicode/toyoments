@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::account::ClientAccount;
 use crate::account::ClientAccountError;
-use crate::engine::disputable_transaction::DisputableTransaction;
+use crate::engine::disputable::DisputableTransaction;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 

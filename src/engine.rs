@@ -1,2 +1,4 @@
-pub mod core;
-pub mod disputable_transaction;
+mod disputable;
+pub mod payment_engine;
+
+pub use payment_engine::PaymentEngine;
