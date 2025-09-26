@@ -3,6 +3,20 @@ use rust_decimal::Decimal;
 use crate::account::ClientAccount;
 use crate::transaction::PositiveAmount;
 
+#[derive(thiserror::Error, Debug)]
+pub enum ClientAccountError {
+    #[error("operation overflow applying amount={amount:?} to account={client_account:?}")]
+    OperationOverflow {
+        client_account: ClientAccount,
+        amount: PositiveAmount,
+    },
+    #[error("insufficient funds amount={amount:?} account={client_account:?}")]
+    InsufficientFunds {
+        client_account: ClientAccount,
+        amount: PositiveAmount,
+    },
+}
+
 pub fn lock(client_account: &mut ClientAccount) {
     client_account.locked = true;
 }
@@ -112,18 +126,4 @@ fn insufficient_funds_error(client_account: &ClientAccount, amount: PositiveAmou
         client_account: *client_account,
         amount,
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ClientAccountError {
-    #[error("operation overflow applying amount={amount:?} to account={client_account:?}")]
-    OperationOverflow {
-        client_account: ClientAccount,
-        amount: PositiveAmount,
-    },
-    #[error("insufficient funds amount={amount:?} account={client_account:?}")]
-    InsufficientFunds {
-        client_account: ClientAccount,
-        amount: PositiveAmount,
-    },
 }
