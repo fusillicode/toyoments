@@ -32,7 +32,10 @@ fn main() -> color_eyre::Result<()> {
         }
     }
 
-    csv_report::write_to_stdout(clients_accounts.as_inner().values())?;
+    let report_errors = csv_report::write_to_stdout(clients_accounts.as_inner().values());
+    for error in report_errors {
+        eprintln!("error writing report: {error}");
+    }
 
     Ok(())
 }

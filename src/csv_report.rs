@@ -1,31 +1,43 @@
-use color_eyre::eyre::OptionExt;
 use csv::Writer;
 use rust_decimal::Decimal;
 use serde::Serialize;
+use thiserror::Error;
 use toyments::account::ClientAccount;
 use toyments::transaction::ClientId;
 
-/// Write the supplied `ClientAccount`s to stdout as CSV in ascending `client_id` order.
+#[derive(Debug, Error)]
+pub enum CsvReportError {
+    #[error("overflow in total calculation for client_account={client_account:?}")]
+    TotalOverflow { client_account: ClientAccount },
+    #[error("csv serialization error for client_account={client_account:?}, source_error={source:?}")]
+    Csv {
+        client_account: ClientAccount,
+        #[source]
+        source: csv::Error,
+    },
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+
+/// Write the supplied [`ClientAccount`]'s to stdout as CSV in ascending `client_id` order.
+/// Returns a [`Vec`] of [`CsvReportError`] representing all the possible errors encountered during
+/// reporting.
 ///
 /// # Rationale
-/// Deterministic ordering (sorted by `client_id`) yields reproducible output,
-/// simpler diffs, and stable snapshot tests while retaining a `HashMap` for
-/// amortized O(1) updates.
+/// The sorting was introduced to match the expected output and to permit:
+/// - Reproducible downstream processing
+/// - Easier snapshot testing
 ///
-/// # Approach
-/// Collect references, perform a one‑shot O(n log n) sort at report time, then
-/// serialize to CSV.
+/// The sorting was implemented at report time to keep
+/// [`toyments::account::ClientsAccounts`] internal data structure an
+/// [`std::collections::HashMap`] and permit fast inserts and updates (`O(1)` on average).
+/// The cost of the ordering is a one‑shot `O(n log n)` when producing the final report.
+/// This should be typically optimal for batch-style reporting at program end.
 ///
 /// # Alternative
-/// Using a `BTreeMap` would provide inherent ordering but impose O(log n) on every
-/// mutation even if no report is emitted.
-///
-/// # Errors
-/// Returns an error if:
-/// - Computing `total` overflows (from [`ClientAccountReport::try_from`]).
-/// - Serializing a row fails ([`csv::Error`]).
-/// - Flushing stdout fails (I/O error).
-pub fn write_to_stdout<'a, I>(clients_accounts: I) -> color_eyre::Result<()>
+/// Switch to a [`std::collections::BTreeMap`] to have inherent ordering but
+/// incur in an O(log n) cost for every mutation.
+pub fn write_to_stdout<'a, I>(clients_accounts: I) -> Vec<CsvReportError>
 where
     I: IntoIterator<Item = &'a ClientAccount>,
 {
@@ -33,12 +45,27 @@ where
     accounts.sort_unstable_by_key(|acc| acc.client_id());
 
     let mut writer = Writer::from_writer(std::io::stdout());
-    for client_account in accounts {
-        writer.serialize(ClientAccountReport::try_from(client_account)?)?;
-    }
-    writer.flush()?;
+    let mut errors: Vec<CsvReportError> = Vec::new();
 
-    Ok(())
+    for client_account in accounts {
+        match ClientAccountReport::try_from(client_account) {
+            Ok(report) => {
+                if let Err(source) = writer.serialize(report) {
+                    errors.push(CsvReportError::Csv {
+                        client_account: *client_account,
+                        source,
+                    });
+                }
+            }
+            Err(err) => errors.push(err),
+        }
+    }
+
+    if let Err(io_err) = writer.flush() {
+        errors.push(CsvReportError::Io(io_err));
+    }
+
+    errors
 }
 
 #[derive(Serialize)]
@@ -51,16 +78,16 @@ struct ClientAccountReport {
 }
 
 impl TryFrom<&ClientAccount> for ClientAccountReport {
-    type Error = color_eyre::Report;
+    type Error = CsvReportError;
 
     fn try_from(client_account: &ClientAccount) -> Result<Self, Self::Error> {
         Ok(Self {
             client_id: client_account.client_id(),
             available: client_account.available(),
             held: client_account.held(),
-            total: client_account.total().ok_or_eyre(format!(
-                "overflow in total calculation for client_account={client_account:?}]"
-            ))?,
+            total: client_account.total().ok_or(CsvReportError::TotalOverflow {
+                client_account: *client_account,
+            })?,
             locked: client_account.is_locked(),
         })
     }
