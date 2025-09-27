@@ -113,7 +113,8 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 - Handle re-disputes by (a) forbidding them on the same transaction, or (b) track dispute life cycle.
 - Optimize chargeback by pruning related transaction to reduce memory and forbid further life cycle actions.
 - Introduce structured error policy (global fatal vs per‑client fatal vs recoverable) and clear exit codes.
-- Slim down error payloads (prefer stable IDs) and improve human‑readable formatting.
+- Simplify error payloads by using IDs rather than whole models
+- Improve errors display representations and summary (e.g. NDJSON)
 - Abstract account storage behind a trait (enables alternate backends / persistence).
 - Explore an event‑sourced redesign: explicit aggregate state, events, and transitions.
 - Parallelize per‑client processing: e.g. Kafka (partition by client id + consumer group) or a dataflow style pipeline.
