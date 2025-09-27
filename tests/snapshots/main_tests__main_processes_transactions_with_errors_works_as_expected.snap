@@ -1,5 +1,5 @@
 ---
-source: tests/main_test.rs
+source: tests/main_tests.rs
 expression: stdout
 ---
 client_id,available,held,total,locked

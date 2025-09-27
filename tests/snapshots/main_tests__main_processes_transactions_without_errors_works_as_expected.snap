@@ -1,6 +1,5 @@
 ---
-source: tests/main_test.rs
-assertion_line: 37
+source: tests/main_tests.rs
 expression: stdout
 ---
 client_id,available,held,total,locked
