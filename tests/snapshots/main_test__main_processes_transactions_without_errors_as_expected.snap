@@ -1,0 +1,7 @@
+---
+source: tests/main_test.rs
+expression: stdout
+---
+client_id,available,held,total,locked
+1,4.0,0.0,4.0,false
+2,1.0,0.0,1.0,true
