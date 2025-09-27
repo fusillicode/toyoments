@@ -49,7 +49,7 @@ dispute,2,4,
 chargeback,2,4,
 ```
 
-Whitespaces from CSV fields and headers are trimmed.
+Whitespaces from CSV fields and headers are automatically trimmed.
 Negative amounts are rejected.
 
 ## Output Format (Example)
