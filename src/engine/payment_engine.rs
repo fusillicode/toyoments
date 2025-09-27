@@ -162,7 +162,6 @@ pub enum PaymentEngineError {
         client_account: ClientAccount,
         tx: Transaction,
     },
-
     #[error(transparent)]
     ClientAccount(#[from] ClientAccountError),
 }
