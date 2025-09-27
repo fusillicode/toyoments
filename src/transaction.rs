@@ -4,52 +4,25 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, parse_display::Display)]
 pub struct ClientId(pub u16);
 
-impl core::fmt::Display for ClientId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq, parse_display::Display)]
 pub struct TransactionId(pub u32);
 
-impl core::fmt::Display for TransactionId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Transaction {
+    #[display("{0}")]
     Deposit(Deposit),
+    #[display("{0}")]
     Withdrawal(Withdrawal),
+    #[display("{0}")]
     Dispute(Dispute),
+    #[display("{0}")]
     Resolve(Resolve),
+    #[display("{0}")]
     Chargeback(Chargeback),
-}
-
-impl core::fmt::Display for Transaction {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Deposit(d) => write!(
-                f,
-                "tx=(deposit id={} client_id={} amount={})",
-                d.id, d.client_id, d.amount
-            ),
-            Self::Withdrawal(w) => write!(
-                f,
-                "tx=(withdrawal id={} client_id={} amount={})",
-                w.id, w.client_id, w.amount
-            ),
-            Self::Dispute(d) => write!(f, "tx=(dispute id={} client_id={})", d.id, d.client_id),
-            Self::Resolve(r) => write!(f, "tx=(resolve id={} client_id={})", r.id, r.client_id),
-            Self::Chargeback(c) => write!(f, "tx=(chargeback id={} client_id={})", c.id, c.client_id),
-        }
-    }
 }
 
 impl Transaction {
@@ -132,7 +105,8 @@ impl<'de> Deserialize<'de> for Transaction {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
+#[display("tx=(deposit id={id} client_id={client_id} amount={amount})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Deposit {
     pub client_id: ClientId,
@@ -140,7 +114,8 @@ pub struct Deposit {
     pub amount: PositiveAmount,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
+#[display("tx=(withdrawal id={id} client_id={client_id} amount={amount})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Withdrawal {
     pub client_id: ClientId,
@@ -148,21 +123,24 @@ pub struct Withdrawal {
     pub amount: PositiveAmount,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
+#[display("tx=(dispute id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Dispute {
     pub client_id: ClientId,
     pub id: TransactionId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
+#[display("tx=(resolve id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Resolve {
     pub client_id: ClientId,
     pub id: TransactionId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, parse_display::Display)]
+#[display("tx=(chargeback id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Chargeback {
     pub client_id: ClientId,
@@ -170,15 +148,9 @@ pub struct Chargeback {
 }
 
 /// This permits to avoid checks on negative amount while handling transactions.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, parse_display::Display)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PositiveAmount(Decimal);
-
-impl core::fmt::Display for PositiveAmount {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 impl TryFrom<Decimal> for PositiveAmount {
     type Error = color_eyre::Report;

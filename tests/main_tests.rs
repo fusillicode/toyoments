@@ -34,9 +34,8 @@ fn main_processes_transactions_with_errors_works_as_expected() {
     assert_eq!(Some(1), output.status.code());
     // Expected report to stdout
     insta::assert_snapshot!(stdout);
-    // Stderr populated with errors
-    // Not using snapshotting because I consider errors current representation not stable enough.
-    // Core deserialization error for invalid type
+    // Stderr populated with errors.
+    // Not using snapshot because errors current representation is not yet stable enough.
     assert!(stderr.contains("failed to deserialize transaction"));
     assert!(stderr.contains("unknown variant `foo`"));
     assert!(stderr.contains("transaction already disputed"));

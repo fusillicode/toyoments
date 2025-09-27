@@ -2,7 +2,8 @@ use rust_decimal::Decimal;
 
 use crate::transaction::ClientId;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, parse_display::Display)]
+#[display("account=(client_id={client_id}, available={available}, held={held}, locked={locked})")]
 pub struct ClientAccount {
     pub(in crate::account) client_id: ClientId,
     pub(in crate::account) available: Decimal,
@@ -38,15 +39,5 @@ impl ClientAccount {
 
     pub fn total(&self) -> Option<Decimal> {
         self.available.checked_add(self.held)
-    }
-}
-
-impl core::fmt::Display for ClientAccount {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "account=(client_id={}, available={}, held={}, locked={})",
-            self.client_id, self.available, self.held, self.locked
-        )
     }
 }
