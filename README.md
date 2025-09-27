@@ -108,9 +108,11 @@ Behaviour in case of withdrawals:
 
 - Dispute: Flag only; no immediate balance change.
 - Resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
-- Chargeback: Lock account without refund (fraud/account risk lock). Withdrawal debit stands.
+- Chargeback: Finalize dispute with a fraud/risk lock; no refund (withdrawal debit stands).
 
-Re-dispute after resolve are allowed, permitting repeated dispute cycles (simplifies experimentation; production systems usually restrict this).
+Re-dispute after resolve are allowed, permitting repeated dispute cycles (production systems usually restrict this).
+For withdrawals only the FIRST successful resolve after any dispute issues a refund (single-refund invariant).
+Subsequent dispute/resolve cycles on the same withdrawal are idempotent with respect to balances (no additional credits). Deposit dispute/resolve cycles remain fully repeatable and net neutral (see idempotency test).
 
 ## Error Handling (Current)
 

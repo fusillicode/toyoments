@@ -90,9 +90,12 @@ impl PaymentEngine {
                     // Resolving a disputed deposit: release held back to available.
                     crate::account::unhold_and_deposit(client_account, disputable_tx.amount)?;
                 } else {
-                    // Resolving a disputed withdrawal: refund (re-credit) the amount now.
-                    // Original withdrawal already reduced available; a dispute froze it logically.
-                    crate::account::deposit(client_account, disputable_tx.amount)?;
+                    // Resolving a disputed withdrawal: refund only once.
+                    if !disputable_tx.withdrawal_refunded {
+                        crate::account::deposit(client_account, disputable_tx.amount)?;
+                        disputable_tx.withdrawal_refunded = true;
+                    }
+                    // If already refunded, resolve just clears dispute flag (no second credit).
                 }
 
                 disputable_tx.is_disputed = false;
@@ -113,6 +116,7 @@ impl PaymentEngine {
                     crate::account::unhold(client_account, disputable_tx.amount)?;
                 }
                 // Chargeback of a withdrawal: do NOT refund; withdrawal stands, but lock account.
+                // Future: consider renaming this path (e.g. fraud_lock) or splitting verbs for refund vs lock semantics.
                 crate::account::lock(client_account);
 
                 disputable_tx.is_disputed = false;

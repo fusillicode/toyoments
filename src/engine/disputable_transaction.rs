@@ -16,6 +16,8 @@ pub struct DisputableTransaction {
     pub(in crate::engine) amount: PositiveAmount,
     pub(in crate::engine) is_disputed: bool,
     pub(in crate::engine) kind: DisputableTransactionKind,
+    // Introduced to prevent multiple credits in re-dispute/resolve cycles
+    pub(in crate::engine) withdrawal_refunded: bool,
 }
 
 impl DisputableTransaction {
@@ -35,6 +37,7 @@ impl From<Transaction> for Option<DisputableTransaction> {
                 amount: deposit.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Deposit,
+                withdrawal_refunded: false,
             }),
             Transaction::Withdrawal(withdrawal) => Some(DisputableTransaction {
                 id,
@@ -42,6 +45,7 @@ impl From<Transaction> for Option<DisputableTransaction> {
                 amount: withdrawal.amount,
                 is_disputed: false,
                 kind: DisputableTransactionKind::Withdrawal,
+                withdrawal_refunded: false,
             }),
             Transaction::Dispute(_) | Transaction::Resolve(_) | Transaction::Chargeback(_) => None,
         }

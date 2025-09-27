@@ -96,7 +96,7 @@ fn handle_transaction_chargeback_on_deposit_removes_and_locks() {
 }
 
 #[test]
-fn handle_transaction_withdrawal_chargeback_behaves_as_fraud_lock_without_refund() {
+fn handle_transaction_withdrawal_chargeback_locks_without_refund() {
     let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(14, "20.00")));
     let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(15, "5.00")));
@@ -106,6 +106,53 @@ fn handle_transaction_withdrawal_chargeback_behaves_as_fraud_lock_without_refund
     assert_eq!(client_account.available(), dec("15.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
     assert!(client_account.is_locked());
+}
+
+#[test]
+fn handle_transaction_withdrawal_single_refund_on_repeated_resolve_doesnt_change_available() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    // Deposit 50
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(300, "50.00")));
+    // Withdraw 10 -> available 40
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, withdrawal(301, "10.00")));
+    assert_eq!(client_account.available(), dec("40.00"));
+    // First dispute (no change)
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(301)));
+    assert_eq!(client_account.available(), dec("40.00"));
+    // First resolve -> refunds 10 -> back to 50
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, resolve(301)));
+    assert_eq!(client_account.available(), dec("50.00"));
+    // Re-dispute allowed for investigation; no balance change
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(301)));
+    assert_eq!(client_account.available(), dec("50.00"));
+    // Second resolve should NOT refund again (single-refund invariant)
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, resolve(301)));
+    assert_eq!(client_account.available(), dec("50.00"));
+}
+
+#[test]
+fn handle_transaction_deposit_with_repeated_dispute_cycles_is_idempotent() {
+    let (mut payment_engine, mut client_account) = setup_engine_and_test_account();
+    // Deposit 100
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, deposit(500, "100.00")));
+    assert_eq!(client_account.available(), dec("100.00"));
+    assert_eq!(client_account.held(), dec("0.00"));
+    // First dispute -> move to held
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(500)));
+    assert_eq!(client_account.available(), dec("0.00"));
+    assert_eq!(client_account.held(), dec("100.00"));
+    // First resolve -> release back
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, resolve(500)));
+    assert_eq!(client_account.available(), dec("100.00"));
+    assert_eq!(client_account.held(), dec("0.00"));
+    // Second dispute -> again move to held
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, dispute(500)));
+    assert_eq!(client_account.available(), dec("0.00"));
+    assert_eq!(client_account.held(), dec("100.00"));
+    // Second resolve -> back to neutral
+    let_assert!(Ok(()) = payment_engine.handle_transaction(&mut client_account, resolve(500)));
+    assert_eq!(client_account.available(), dec("100.00"));
+    assert_eq!(client_account.held(), dec("0.00"));
 }
 
 #[test]
@@ -328,7 +375,6 @@ fn handle_transaction_resolve_after_withdrawal_chargeback_errors_as_expected() {
     assert_eq!(client_account.available(), dec("15.00"));
     assert_eq!(client_account.held(), Decimal::ZERO);
 }
-
 
 fn setup_engine_and_test_account() -> (PaymentEngine, ClientAccount) {
     (PaymentEngine::default(), ClientAccount::new(TEST_CLIENT_ID))
