@@ -8,7 +8,6 @@ pub mod client_account_ops;
 pub use client_account::ClientAccount;
 pub use client_account_ops::ClientAccountError;
 pub use client_account_ops::deposit;
-pub use client_account_ops::deposit_and_unhold;
 pub use client_account_ops::hold;
 pub use client_account_ops::lock;
 pub use client_account_ops::unhold;

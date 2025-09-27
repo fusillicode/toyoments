@@ -1,5 +1,5 @@
 //! Streams transactions from a supplied CSV, mutates in‑memory client accounts (creating them if missing),
-//! and emits a CSV report of the clients accounts state.
+//! and emits a CSV report of the client accounts state.
 //!
 //! # Error Reporting Strategy
 //!

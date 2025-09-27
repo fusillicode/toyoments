@@ -19,9 +19,13 @@ pub enum CsvReportError {
     Io(#[from] std::io::Error),
 }
 
-/// Write the supplied [`ClientAccount`]'s to stdout as CSV in ascending `client_id` order.
-/// Returns a [`Vec`] of [`CsvReportError`] representing all the possible errors encountered during
-/// reporting.
+/// Write the supplied client accounts to stdout as CSV in ascending `client_id` order.
+/// Returns a [`Vec`] of [`CsvReportError`] representing all errors encountered during reporting.
+///
+/// Partial successes are possible: successfully serialized rows remain on stdout even if later
+/// rows fail.
+///
+/// Errors are accumulated to let the caller decide the overall process success/exit code.
 ///
 /// # Rationale
 /// The sorting was introduced to match the expected output and to permit:

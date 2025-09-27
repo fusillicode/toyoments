@@ -73,7 +73,7 @@ pub fn hold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Resul
 ///
 /// Returns an error if:
 /// - Held funds are less than `amount` ([`ClientAccountError::InsufficientFunds`]).
-/// - Subtracting `amount` from available funds overflows ([`ClientAccountError::OperationOverflow`]).
+/// - Subtracting `amount` from held funds overflows ([`ClientAccountError::OperationOverflow`]).
 pub fn unhold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Result<(), ClientAccountError> {
     client_account.held = checked_sub_from_held(client_account, amount)?;
     Ok(())
@@ -100,7 +100,7 @@ pub fn withdraw_and_hold(client_account: &mut ClientAccount, amount: PositiveAmo
 }
 
 /// Moves `amount` from held back to available funds.
-/// Used when resolving a dispute on a withdrawal.
+/// Used when resolving a dispute on a deposit.
 ///
 /// # Errors
 ///
@@ -118,24 +118,6 @@ pub fn unhold_and_deposit(
     Ok(())
 }
 
-/// Adds `amount` to available funds while decreasing held ones by the same `amount`.
-/// Used when resolving a dispute on a non-deposit transaction.
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - Held funds are less than `amount` ([`ClientAccountError::InsufficientFunds`]).
-/// - Adjusting available or held funds overflows ([`ClientAccountError::OperationOverflow`]).
-pub fn deposit_and_unhold(
-    client_account: &mut ClientAccount,
-    amount: PositiveAmount,
-) -> Result<(), ClientAccountError> {
-    let new_available = checked_add_to_available(client_account, amount)?;
-    let new_held = checked_sub_from_held(client_account, amount)?;
-    client_account.available = new_available;
-    client_account.held = new_held;
-    Ok(())
-}
 
 fn checked_add_to_available(
     client_account: &ClientAccount,
