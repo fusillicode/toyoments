@@ -91,9 +91,9 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 
 ## Error Handling (Current)
 
-- Deserialization failures: logged, row skipped.
-- Business rule errors (e.g. insufficient funds, invalid dispute context): logged, transaction skipped.
-- Overflow on `total` computation: reported via error propagation (would surface as a runtime error if it occurred).
+- CSV deserialization errors are logged to stderr and the processing of the related row skipped.
+- Business rule errors (e.g. insufficient funds, invalid dispute context) are logged to stderr and the processing of the related transaction skipped.
+- Reporting errors (e.g. overflow on `total` computation, failed serialization, I/O errors) are collected and logged to stderr.
 
 ## Design Notes
 
