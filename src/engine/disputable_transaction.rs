@@ -3,6 +3,12 @@ use crate::transaction::PositiveAmount;
 use crate::transaction::Transaction;
 use crate::transaction::TransactionId;
 
+/// Internal representation of a disputable transaction (deposit or withdrawal).
+///
+/// Tracks original [`TransactionId`], owning [`ClientId`], [`PositiveAmount`], dispute flag,
+/// and whether it was a deposit or withdrawal.
+/// Built via dedicated [`From<Transaction>`] that returns [`Some<DisputableTransaction>`]
+/// for disputable transactions and [`None`] for non disputable ones.
 #[derive(Debug)]
 pub struct DisputableTransaction {
     pub(in crate::engine) id: TransactionId,

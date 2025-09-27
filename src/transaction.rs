@@ -36,6 +36,10 @@ pub struct ClientId(pub u16);
 #[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq, parse_display::Display)]
 pub struct TransactionId(pub u32);
 
+/// High‑level transaction parsed from the CSV input.
+///
+/// Variants wrap concrete structs: [`Deposit`], [`Withdrawal`], [`Dispute`], [`Resolve`], [`Chargeback`].
+/// Each concrete struct holds only the fields that defines it.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Transaction {
@@ -131,6 +135,7 @@ impl<'de> Deserialize<'de> for Transaction {
     }
 }
 
+/// Deposit of funds increasing a client's available balance.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[display("tx=(deposit id={id} client_id={client_id} amount={amount})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -140,6 +145,7 @@ pub struct Deposit {
     pub amount: PositiveAmount,
 }
 
+/// Withdrawal of funds decreasing a client's available balance.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[display("tx=(withdrawal id={id} client_id={client_id} amount={amount})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -149,6 +155,7 @@ pub struct Withdrawal {
     pub amount: PositiveAmount,
 }
 
+/// Opens a dispute on a prior transaction.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[display("tx=(dispute id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -157,6 +164,7 @@ pub struct Dispute {
     pub id: TransactionId,
 }
 
+/// Closes a dispute restoring normal balances.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[display("tx=(resolve id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -165,6 +173,7 @@ pub struct Resolve {
     pub id: TransactionId,
 }
 
+/// Finalizes a dispute removing funds (if held) and locking the account.
 #[derive(Debug, Clone, Copy, parse_display::Display)]
 #[display("tx=(chargeback id={id} client_id={client_id})")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -173,7 +182,7 @@ pub struct Chargeback {
     pub id: TransactionId,
 }
 
-/// This permits to avoid checks on negative amount while handling transactions.
+/// Positive decimal enforced at parse / construction time to avoid repeated negative checks.
 #[derive(Debug, Copy, Clone, parse_display::Display)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PositiveAmount(Decimal);

@@ -22,6 +22,10 @@ pub use client_account_ops::unhold_and_deposit;
 pub use client_account_ops::withdraw;
 pub use client_account_ops::withdraw_and_hold;
 
+/// Collection of all known client accounts keyed by [`ClientId`].
+///
+/// Provides retrieval or creation via [`ClientsAccounts::get_or_create_new_account`];
+/// mutation of contained accounts occurs through free functions, e.g. [`deposit`].
 #[derive(Default)]
 pub struct ClientsAccounts(HashMap<ClientId, ClientAccount>);
 

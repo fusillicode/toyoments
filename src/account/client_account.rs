@@ -2,6 +2,10 @@ use rust_decimal::Decimal;
 
 use crate::transaction::ClientId;
 
+/// Per‑client balance record used by the processing engine.
+///
+/// Holds available funds, held (disputed) funds, and the lock status.
+/// Mutations of an account is performed via free functions defined in [`crate::account::client_account_ops`].
 #[derive(Debug, Copy, Clone, parse_display::Display)]
 #[display("account=(client_id={client_id}, available={available}, held={held}, locked={locked})")]
 pub struct ClientAccount {
