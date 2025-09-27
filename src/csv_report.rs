@@ -7,9 +7,9 @@ use toyments::transaction::ClientId;
 
 #[derive(Debug, Error)]
 pub enum CsvReportError {
-    #[error("overflow in total calculation for client_account={client_account:?}")]
+    #[error("overflow computing total for {client_account}")]
     TotalOverflow { client_account: ClientAccount },
-    #[error("csv serialization error for client_account={client_account:?}, source_error={source:?}")]
+    #[error("csv serialization error for {client_account}, error={source}")]
     Csv {
         client_account: ClientAccount,
         #[source]

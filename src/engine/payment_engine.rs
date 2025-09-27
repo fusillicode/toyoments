@@ -140,24 +140,24 @@ impl PaymentEngine {
 
 #[derive(thiserror::Error, Debug)]
 pub enum PaymentEngineError {
-    #[error("transaction not related to the account tx={tx:?}, account={client_account:?}")]
+    #[error("transaction does not belong to {client_account}, {tx}")]
     UnrelatedTransaction {
         client_account: ClientAccount,
         tx: Transaction,
     },
-    #[error("client account locked, cannot process tx={tx:?}, account={client_account:?}")]
+    #[error("cannot process transaction, locked {client_account}, {tx}")]
     ClientAccountLocked {
         client_account: ClientAccount,
         tx: Transaction,
     },
-    #[error("transaction not found id={id:?}")]
+    #[error("transaction not found id={id}")]
     TransactionNotFound { id: TransactionId },
-    #[error("transaction already disputed tx={tx:?}, account={client_account:?}")]
+    #[error("transaction already disputed on account {client_account}, {tx}")]
     TransactionAlreadyDisputed {
         client_account: ClientAccount,
         tx: Transaction,
     },
-    #[error("transaction not disputed tx={tx:?}, account={client_account:?}")]
+    #[error("transaction not disputed on account {client_account}, {tx}")]
     TransactionNotDisputed {
         client_account: ClientAccount,
         tx: Transaction,

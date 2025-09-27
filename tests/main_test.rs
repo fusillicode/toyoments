@@ -30,11 +30,11 @@ fn main_processes_transactions_with_errors_as_expected() {
     insta::assert_snapshot!(stdout);
     // Not using snapshotting because I consider errors current representation not stable enough.
     // Core deserialization error for invalid type
-    assert!(stderr.contains("error deserializing transaction"));
+    assert!(stderr.contains("failed to deserialize transaction"));
     assert!(stderr.contains("unknown variant `foo`"));
-    assert!(stderr.contains("TransactionAlreadyDisputed"));
-    assert!(stderr.contains("TransactionNotFound"));
-    assert!(stderr.contains("TransactionNotDisputed"));
-    assert!(stderr.contains("InsufficientFunds"));
-    assert!(stderr.contains("ClientAccountLocked"));
+    assert!(stderr.contains("transaction already disputed"));
+    assert!(stderr.contains("transaction not found"));
+    assert!(stderr.contains("transaction not disputed"));
+    assert!(stderr.contains("insufficient available funds"));
+    assert!(stderr.contains("cannot process transaction, locked account"));
 }

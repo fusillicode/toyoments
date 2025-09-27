@@ -39,7 +39,7 @@ fn main() -> color_eyre::Result<()> {
         let tx = match tx_res {
             Ok(tx) => tx,
             Err(error) => {
-                eprintln!("error deserializing transaction, error={error:?}");
+                eprintln!("failed to deserialize transaction, error={error}");
                 errors.push(ProcessingError::from(error));
                 continue;
             }
@@ -48,16 +48,14 @@ fn main() -> color_eyre::Result<()> {
         let client_account = clients_accounts.get_or_create_new_account(tx.client_id());
 
         if let Err(error) = payment_engine.handle_transaction(client_account, tx) {
-            eprintln!(
-                "error handling transaction for client account, tx={tx:?}, client_account={client_account:?}, error={error:?}"
-            );
+            eprintln!("failed to handle transaction {tx}, error={error}");
             errors.push(ProcessingError::from(error));
         }
     }
 
     let report_errors = csv_report::write_to_stdout(clients_accounts.as_inner().values());
     for error in report_errors {
-        eprintln!("error writing report: {error}");
+        eprintln!("failed to write report row, error={error}");
         errors.push(ProcessingError::from(error));
     }
 

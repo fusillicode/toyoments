@@ -40,3 +40,13 @@ impl ClientAccount {
         self.available.checked_add(self.held)
     }
 }
+
+impl core::fmt::Display for ClientAccount {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "account=(client_id={}, available={}, held={}, locked={})",
+            self.client_id, self.available, self.held, self.locked
+        )
+    }
+}

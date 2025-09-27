@@ -21,12 +21,12 @@ use crate::transaction::PositiveAmount;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientAccountError {
-    #[error("operation overflow applying amount={amount:?} to account={client_account:?}")]
+    #[error("overflow while applying {amount} to {client_account}")]
     OperationOverflow {
         client_account: ClientAccount,
         amount: PositiveAmount,
     },
-    #[error("insufficient funds amount={amount:?} account={client_account:?}")]
+    #[error("insufficient available funds, need {amount} in {client_account}")]
     InsufficientFunds {
         client_account: ClientAccount,
         amount: PositiveAmount,
@@ -117,7 +117,6 @@ pub fn unhold_and_deposit(
     client_account.available = new_available;
     Ok(())
 }
-
 
 fn checked_add_to_available(
     client_account: &ClientAccount,

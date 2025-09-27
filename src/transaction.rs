@@ -7,8 +7,20 @@ use serde::Serialize;
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ClientId(pub u16);
 
+impl core::fmt::Display for ClientId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct TransactionId(pub u32);
+
+impl core::fmt::Display for TransactionId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -18,6 +30,26 @@ pub enum Transaction {
     Dispute(Dispute),
     Resolve(Resolve),
     Chargeback(Chargeback),
+}
+
+impl core::fmt::Display for Transaction {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Deposit(d) => write!(
+                f,
+                "tx=(deposit id={} client_id={} amount={})",
+                d.id, d.client_id, d.amount
+            ),
+            Self::Withdrawal(w) => write!(
+                f,
+                "tx=(withdrawal id={} client_id={} amount={})",
+                w.id, w.client_id, w.amount
+            ),
+            Self::Dispute(d) => write!(f, "tx=(dispute id={} client_id={})", d.id, d.client_id),
+            Self::Resolve(r) => write!(f, "tx=(resolve id={} client_id={})", r.id, r.client_id),
+            Self::Chargeback(c) => write!(f, "tx=(chargeback id={} client_id={})", c.id, c.client_id),
+        }
+    }
 }
 
 impl Transaction {
@@ -141,6 +173,12 @@ pub struct Chargeback {
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PositiveAmount(Decimal);
+
+impl core::fmt::Display for PositiveAmount {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl TryFrom<Decimal> for PositiveAmount {
     type Error = color_eyre::Report;
