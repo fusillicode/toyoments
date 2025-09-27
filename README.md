@@ -10,10 +10,54 @@ It ingests a CSV of transaction, mutates in‑memory client accounts, and emits 
 
 ## Overview
 
-- Input: CSV with columns `type,client,tx,amount`.
+- Input: CSV with header `type,client,tx,amount` (amount omitted for `dispute`, `resolve`, `chargeback`).
 - Supported transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`.
 - Output: CSV with columns `client_id,available,held,total,locked` (sorted by `client_id`).
 - Errors: errors (e.g. malformed row, business rule violations, etc.) are logged to stderr without breaking the processing of subsequent transactions (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
+- Notes: input field/header whitespace is trimmed; negative amounts are rejected.
+
+### Schema Input:
+
+| Column   | Type            | Required    | Notes                                                                               |
+| -------- | --------------- | ----------- | ----------------------------------------------------------------------------------- |
+| `type`   | string          | yes         | One of `deposit`,`withdrawal`,`dispute`,`resolve`,`chargeback`                      |
+| `client` | unsigned 16-bit | yes         | Parsed as `u16` (`ClientId`)                                                        |
+| `tx`     | unsigned 32-bit | yes         | Parsed as `u32` (`TransactionId`)                                                   |
+| `amount` | decimal         | conditional | Required for `deposit` & `withdrawal`; omitted (blank) for others; must be positive |
+
+### Schema Output:
+
+| Column      | Type            | Notes                                                                                                       |
+| ----------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
+| `client_id` | unsigned 16-bit | Client identifier; rows sorted ascending                                                                    |
+| `available` | decimal         | Spendable funds not under deposit dispute                                                                   |
+| `held`      | decimal         | Funds frozen due to disputed deposits (withdrawal disputes do not change balances)                          |
+| `total`     | decimal         | `available + held`; overflow-checked; invariant: non-negative; refund adds only on first withdrawal resolve |
+| `locked`    | boolean         | True after terminal chargeback (deposit loss or withdrawal fraud lock)                                      |
+
+### Example Input:
+
+```csv
+type,client,tx,amount
+deposit,1,1,5.1234
+deposit,2,3,3.0000
+dispute,1,1,
+withdrawal,2,4,2.0000
+resolve,1,1,
+withdrawal,1,2,1.1234
+dispute,2,4,
+chargeback,2,4,
+```
+
+### Example Output:
+
+```csv
+client_id,available,held,total,locked
+1,4.0,0.0,4.0,false
+2,1.0,0.0,1.0,true
+```
+
+All decimal fields use `rust_decimal` preserving input precision; no additional rounding is applied beyond provided scale.
 
 ## Build & Run
 
@@ -35,31 +79,6 @@ Snapshot integration tests assert full stdout. To update snapshots:
 INSTA_UPDATE=auto cargo test
 ```
 
-## Input Format (Example)
-
-```csv
-type,client,tx,amount
-deposit,1,1,5.1234
-deposit,2,3,3.0000
-dispute,1,1,
-withdrawal,2,4,2.0000
-resolve,1,1,
-withdrawal,1,2,1.1234
-dispute,2,4,
-chargeback,2,4,
-```
-
-Whitespaces from CSV fields and headers are automatically trimmed.
-Negative amounts are rejected.
-
-## Output Format (Example)
-
-```csv
-client_id,available,held,total,locked
-1,4.0,0.0,4.0,false
-2,1.0,0.0,1.0,true
-```
-
 ## Assumptions
 
 - Transactions in the input CSV are **already sequentially ordered per client**.
@@ -73,17 +92,18 @@ client_id,available,held,total,locked
 ### Dispute Semantics
 
 The original spec maps cleanly to deposits: funds from an accepted deposit can be frozen (moved from `available` to `held`) while liability is investigated.
+
 Applying that rule symmetrically to withdrawals would imply either:
 
-a. increasing `held` when a withdrawal is disputed (even though the deduction already occurred) or
-b. re‑crediting funds immediately as a temporary hold/refund.
+- Increase `held` when a withdrawal is disputed (even though the deduction already occurred), or
+- Re‑credit funds immediately as a temporary hold/refund.
 
 Both approaches have the following issues:
 
 - Increasing `held` on a withdrawal dispute would inflate `total` (available + held) above the true post‑withdrawal value, creating a phantom asset.
 - Auto re‑crediting (provisional refund) on every withdrawal dispute encourages abusive churn without any risk modeling and complicates invariants (oscillating totals on repeated disputes).
 
-To avoid the state issues the implementation adopts a Flag‑Only model for disputed withdrawals: dispute sets a flag, leaving balances untouched until a terminal action occurs.
+To avoid these issues the implementation adopts a "Flag‑Only model" for disputed withdrawals: dispute sets a flag, leaving balances untouched until a terminal action occurs.
 This keeps `total` a monotonic reflection of realised debits/credits unless an explicit refund (`resolve` of a withdrawal) is declared.
 
 Rationale / Invariants:
