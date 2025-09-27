@@ -66,9 +66,9 @@ client_id,available,held,total,locked
 - No current error condition aborts the entire run. If that policy changes, the main loop must classify fatal errors and `exit(1)` early.
 - Errors are **non‑blocking** and printed to stderr; processing of subsequent transactions continues.
 - If per‑client fatal semantics become necessary, a strategy must be defined. Possible options:
-    - Record only the first error for each account
-    - Record multiple errors for each account
-    - Decide whether to ignore, quarantine, or still apply later transactions in case of error(s)
+  - Record only the first error for each account
+  - Record multiple errors for each account
+  - Decide whether to ignore, quarantine, or still apply later transactions in case of error(s)
 
 ### Dispute Semantics
 
@@ -100,7 +100,7 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 
 ## Design Notes
 
-- Maintaining a `HashMap` for accounts yields amortized O(1) mutation 
+- Maintaining a `HashMap` for accounts yields amortized O(1) mutation
 - Ordering for a deterministic output is done by sorting once at output time.
 - Decimal arithmetic uses `rust_decimal` to preserve fixed precision. Client account's `total` is computed with overflow checking.
 
@@ -112,14 +112,13 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 
 ## Future Improvements
 
-- Implement a more refined dispute semantic to grant clients a better UX.
-- If current dispute semantic in kept, rename withdrawal `chargeback` to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win`.
-- Handle re-disputes by (a) forbidding them on the same transaction, or (b) track dispute life cycle.
-- Optimize chargeback by pruning related transaction to reduce memory and forbid further life cycle actions.
-- Introduce structured error policy (global fatal vs per‑client fatal vs recoverable) and clear exit codes.
+- Implement a more refined dispute semantic for withdrawals to grant clients a better UX.
+- If current dispute semantic in kept, evaluate renaming withdrawal `chargeback` to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win`.
+- Handle re-disputes by (a) forbidding them on the same transaction, or (b) tracking disputes life cycle.
+- Optimize `chargeback` by pruning related transaction to reduce memory and forbid further life cycle actions.
+- Introduce a more structured error policy by identifying errors that should stop the whole processing, stop the processing for specific clients, and those that are recoverable.
 - Simplify error payloads by using IDs rather than whole models
-- Improve errors display representations and summary (e.g. [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming#Newline-Delimited_JSON))
-- Abstract account storage behind a trait (enables alternate backends / persistence).
-- Explore an event‑sourced redesign: explicit aggregate state, events, and transitions.
-- Parallelize per‑client processing by introducing Kafka (partition by client id + consumer group) or re‑design the solution following a dataflow programming approach (e.g. [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow)).
-- Consider batched or streaming snapshotting to external storage.
+- Improve errors display representations and reporting (e.g. [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming#Newline-Delimited_JSON))
+- Abstract account storage behind a trait to enable swapping and mocking clients account persistence and retrieval.
+- Explore a redesign based on an event‑sourced approach that defines explicit aggregate, aggregate state, events, and transitions.
+- Parallelize per‑client processing by introducing infrastructural components like Kafka (with topics partitioned by client id and dedicated consumer group) or by switching the implementation to a dataflow programming approach (e.g. [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow)).
