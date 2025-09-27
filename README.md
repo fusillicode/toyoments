@@ -5,14 +5,15 @@
 [![Doc](https://github.com/fusillicode/toyoments/actions/workflows/doc.yml/badge.svg)](https://fusillicode.github.io/toyoments)
 [![Commits](https://shields.io/github/last-commit/fusillicode/toyoments)](https://github.com/fusillicode/toyoments/commits/main)
 
-A small experimental payment engine. It ingests a CSV of transaction, mutates in‑memory client accounts, and emits a final CSV report (one row per client) to stdout.
+A small experimental payment engine to simulate processing of clients transactions.
+It ingests a CSV of transaction, mutates in‑memory client accounts, and emits a final CSV report (one row per client) to stdout.
 
 ## Overview
 
 - Input: CSV with columns `type,client,tx,amount`.
 - Supported transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`.
 - Output: CSV with columns `client_id,available,held,total,locked` (sorted by `client_id`).
-- Errors: Non‑fatal issues (e.g. malformed row, business rule violation) are logged to stderr and processing continues (see Assumptions / Future Improvements).
+- Errors: Non‑fatal issues (e.g. malformed row, business rule violation) are logged to stderr and processing continues (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
 
 ## Build & Run
 
@@ -48,6 +49,7 @@ dispute,2,4,
 chargeback,2,4,
 ```
 
+Whitespaces from CSV fields and headers are trimmed.
 Negative amounts are rejected.
 
 ## Output Format (Example)
@@ -67,24 +69,25 @@ client_id,available,held,total,locked
 
 ### Dispute Semantics
 
-Flag‑Only Dispute Handling (no provisional credit for withdrawals). 
+Flag‑Only Dispute Handling with no provisional credit for withdrawals.
 `chargeback` on a withdrawal locks the account without refund (i.e. not a consumer chargeback refund) to:
 
 - Avoid artificial inflation of `total` if "holding" a withdrawal (which already reduced balances).
 - Keep invariants simple with `total` never exceeding true economic value unless an explicit refund occurs.
 
-Deposits:
+Behaviour in case of deposits:
 
-- dispute: Move disputed amount from `available` to `held` (freeze spendability; `total` unchanged).
-- resolve: Release held funds back to `available` (state returns to pre‑dispute; no net effect).
-- chargeback: Permanently remove held funds and lock the account.
+- Dispute: Move disputed amount from `available` to `held` (freeze spendability; `total` unchanged).
+- Resolve: Release held funds back to `available` (state returns to pre‑dispute; no net effect).
+- Chargeback: Permanently remove held funds and lock the account.
 
-Withdrawals:
+Behaviour in case of withdrawals:
 
-- dispute: no immediate balance change (no provisional refund or hold increase).
-- resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
-- chargeback: Lock account without refund (fraud/account risk lock). Withdrawal debit stands.
+- Dispute: no immediate balance change (no provisional refund or hold increase).
+- Resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
+- Chargeback: Lock account without refund (fraud/account risk lock). Withdrawal debit stands.
 
+Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 
 ## Error Handling (Current)
 
@@ -105,7 +108,10 @@ Withdrawals:
 
 ## Future Improvements
 
-- Rename withdrawal `chargeback` path to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win` decisions.
+- Implement a more refined dispute semantic to grant clients a better UX.
+- If current dispute semantic in kept, rename withdrawal `chargeback` to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win`.
+- Handle re-disputes by (a) forbidding them on the same transaction, or (b) track dispute life cycle.
+- Optimize chargeback by pruning related transaction to reduce memory and forbid further life cycle actions.
 - Introduce structured error policy (global fatal vs per‑client fatal vs recoverable) and clear exit codes.
 - Slim down error payloads (prefer stable IDs) and improve human‑readable formatting.
 - Abstract account storage behind a trait (enables alternate backends / persistence).
