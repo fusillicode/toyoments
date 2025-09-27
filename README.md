@@ -5,37 +5,37 @@
 [![Doc](https://github.com/fusillicode/toyoments/actions/workflows/doc.yml/badge.svg)](https://fusillicode.github.io/toyoments)
 [![Commits](https://shields.io/github/last-commit/fusillicode/toyoments)](https://github.com/fusillicode/toyoments/commits/main)
 
-A small experimental payment engine to simulate processing of clients transactions.
-It ingests a CSV of transaction, mutates in‑memory client accounts, and emits a final CSV report (one row per client) to stdout.
+An experimental in‑memory payment engine: reads a CSV of transactions, applies them to client accounts, and writes a per‑client CSV report to stdout.
 
 ## Overview
 
-- Input: CSV with header `type,client,tx,amount` (amount omitted for `dispute`, `resolve`, `chargeback`).
-- Supported transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`.
-- Output: CSV with columns `client_id,available,held,total,locked` (sorted by `client_id`).
-- Errors: errors (e.g. malformed row, business rule violations, etc.) are logged to stderr without breaking the processing of subsequent transactions (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
-- Notes: input field/header whitespace is trimmed; negative amounts are rejected.
+- Input CSV header: `type,client,tx,amount` (amount omitted for `dispute|resolve|chargeback`)
+- Transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`
+- Output columns: `client_id,available,held,total,locked` (sorted by `client_id`)
+- Errors (parse + business + reporting) are logged to stderr; processing continues
+- Whitespace trimmed; negative amounts rejected
+- Decimal math uses `rust_decimal`; original scale preserved (no extra rounding)
 
-### Schema Input:
+### Input Schema
 
-| Column   | Type            | Required    | Notes                                                                               |
-| -------- | --------------- | ----------- | ----------------------------------------------------------------------------------- |
-| `type`   | string          | yes         | One of `deposit`,`withdrawal`,`dispute`,`resolve`,`chargeback`                      |
-| `client` | unsigned 16-bit | yes         | Parsed as `u16` (`ClientId`)                                                        |
-| `tx`     | unsigned 32-bit | yes         | Parsed as `u32` (`TransactionId`)                                                   |
-| `amount` | decimal         | conditional | Required for `deposit` & `withdrawal`; omitted (blank) for others; must be positive |
+| Column   | Type            | Required    | Notes                                                          |
+| -------- | --------------- | ----------- | -------------------------------------------------------------- |
+| `type`   | string          | yes         | One of `deposit`,`withdrawal`,`dispute`,`resolve`,`chargeback` |
+| `client` | unsigned 16-bit | yes         | `u16` client id                                                |
+| `tx`     | unsigned 32-bit | yes         | `u32` transaction id                                           |
+| `amount` | decimal         | conditional | Only for `deposit`,`withdrawal`; must be positive              |
 
-### Schema Output:
+### Output Schema
 
-| Column      | Type            | Notes                                                                                                       |
-| ----------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `client_id` | unsigned 16-bit | Client identifier; rows sorted ascending                                                                    |
-| `available` | decimal         | Spendable funds not under deposit dispute                                                                   |
-| `held`      | decimal         | Funds frozen due to disputed deposits (withdrawal disputes do not change balances)                          |
-| `total`     | decimal         | `available + held`; overflow-checked; invariant: non-negative; refund adds only on first withdrawal resolve |
-| `locked`    | boolean         | True after terminal chargeback (deposit loss or withdrawal fraud lock)                                      |
+| Column      | Type            | Notes                                                                  |
+| ----------- | --------------- | ---------------------------------------------------------------------- |
+| `client_id` | unsigned 16-bit | Sorted ascending                                                       |
+| `available` | decimal         | Spendable funds                                                        |
+| `held`      | decimal         | Frozen funds (disputed deposits only)                                  |
+| `total`     | decimal         | `available + held`; overflow checked; never negative                   |
+| `locked`    | boolean         | True after terminal chargeback (deposit loss or withdrawal fraud lock) |
 
-### Example Input:
+### Example Input
 
 ```csv
 type,client,tx,amount
@@ -49,7 +49,7 @@ dispute,2,4,
 chargeback,2,4,
 ```
 
-### Example Output:
+### Example Output
 
 ```csv
 client_id,available,held,total,locked
@@ -57,17 +57,10 @@ client_id,available,held,total,locked
 2,1.0,0.0,1.0,true
 ```
 
-All decimal fields use `rust_decimal` preserving input precision; no additional rounding is applied beyond provided scale.
-
 ## Build & Run
 
 ```bash
-cargo run -- path/to/transactions.csv > report.csv
-```
-
-Errors (if any) will be printed to stderr; redirect separately if needed:
-
-```bash
+cargo run -- path/to/transactions.csv > report.csv     # stdout: report
 cargo run -- transactions.csv > report.csv 2> errors.log
 ```
 
@@ -81,86 +74,64 @@ INSTA_UPDATE=auto cargo test
 
 ## Assumptions
 
-- Transactions in the input CSV are **already sequentially ordered per client**.
-- No current error condition aborts the entire run. If that policy changes, the main loop must classify fatal errors and `exit(1)` early.
-- Errors are **non‑blocking** and printed to stderr; processing of subsequent transactions continues.
-- If per‑client fatal semantics become necessary, a strategy must be defined. Possible options:
-  - Record only the first error for each account
-  - Record multiple errors for each account
-  - Decide whether to ignore, quarantine, or still apply later transactions in case of error(s)
+- Input transactions are already sequentially ordered per client.
+- No current error condition aborts the entire run; all errors are non‑fatal.
 
 ### Dispute Semantics
 
-The original spec maps cleanly to deposits: funds from an accepted deposit can be frozen (moved from `available` to `held`) while liability is investigated.
+#### Deposits:
 
-Applying that rule symmetrically to withdrawals would imply either:
+- Dispute: move amount `available → held` (total unchanged)
+- Resolve: release `held → available`
+- Chargeback: remove held funds; lock account
 
-- Increase `held` when a withdrawal is disputed (even though the deduction already occurred), or
-- Re‑credit funds immediately as a temporary hold/refund.
+#### Withdrawals (asymmetric “flag-only” model):
 
-Both approaches have the following issues:
+- Dispute: mark disputed; balances unchanged
+- Resolve: single refund (first successful resolve only) → credit back to `available`
+- Chargeback: lock account; no refund (debit stands)
 
-- Increasing `held` on a withdrawal dispute would inflate `total` (available + held) above the true post‑withdrawal value, creating a phantom asset.
-- Auto re‑crediting (provisional refund) on every withdrawal dispute encourages abusive churn without any risk modeling and complicates invariants (oscillating totals on repeated disputes).
+#### Invariants & Rationale:
 
-To avoid these issues the implementation adopts a "Flag‑Only model" for disputed withdrawals: dispute sets a flag, leaving balances untouched until a terminal action occurs.
-This keeps `total` a monotonic reflection of realised debits/credits unless an explicit refund (`resolve` of a withdrawal) is declared.
+- Avoids “phantom asset” inflation from disputing already-debited withdrawals
+- `total` reflects realised net unless a refund is explicitly granted
+- Single-refund invariant prevents repeated credit cycling
+- Re-disputes allowed; further resolves on same withdrawal are idempotent
+- Withdrawal chargeback currently means fraud/risk lock (future rename e.g. `fraud_lock`)
 
-Rationale / Invariants:
+## Error Model
 
-- `total` never exceeds the amount that would exist absent any disputed withdrawals, unless a refund is granted.
-- No negative "held" scenarios or compensating entries are required for withdrawals.
-- Accounting remains symmetric in data model (same life‑cycle verbs) while intentionally asymmetric in balance mutations.
-
-Trade‑offs:
-
-- No provisional customer relief for disputed withdrawals (could be added later as a distinct verb, e.g. `provisional_refund`).
-- Terminology drift: `chargeback` on a withdrawal here means "finalize dispute and fraud/risk lock" rather than consumer refund; future rename (e.g. `fraud_lock`) recommended.
-- Merchant exposure metric (count/amount of currently disputed withdrawals) not yet surfaced; could inform risk decisions.
-
-Behaviour in case of deposits:
-
-- Dispute: Move disputed amount from `available` to `held` (freeze spendability; `total` unchanged).
-- Resolve: Release held funds back to `available` (state returns to pre‑dispute; no net effect).
-- Chargeback: Permanently remove held funds and lock the account.
-
-Behaviour in case of withdrawals:
-
-- Dispute: Flag only; no immediate balance change.
-- Resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
-- Chargeback: Finalize dispute with a fraud/risk lock; no refund (withdrawal debit stands).
-
-Re-dispute after resolve are allowed, permitting repeated dispute cycles (production systems usually restrict this).
-For withdrawals only the FIRST successful resolve after any dispute issues a refund (single-refund invariant).
-Subsequent dispute/resolve cycles on the same withdrawal are idempotent with respect to balances (no additional credits). Deposit dispute/resolve cycles remain fully repeatable and net neutral (see idempotency test).
-
-## Error Handling (Current)
-
-- CSV deserialization errors are logged to stderr and the processing of the related row skipped.
-- Business rule errors (e.g. insufficient funds, invalid dispute context) are logged to stderr and the processing of the related transaction skipped.
-- Reporting errors (e.g. overflow on `total` computation, failed serialization, I/O errors) are collected and logged to stderr.
+- Parse errors: transaction processing skipped, error logged
+- Business rule errors (e.g. insufficient funds, invalid dispute context): transaction processing skipped, error logged
+- Reporting errors (serialization / overflow / I/O): collected and logged
+- None are fatal to the overall run (future policy could classify fatal vs recoverable)
 
 ## Design Notes
 
-- Maintaining a `HashMap` for accounts yields amortized O(1) mutation
-- Ordering for a deterministic output is done by sorting once at output time.
-- Decimal arithmetic uses `rust_decimal` to preserve fixed precision. Client account's `total` is computed with overflow checking.
+- Accounts stored in `HashMap` for amortized O(1) inserts/updates; final report performs a one‑shot sort (O(n log n)) for deterministic ordering & snapshot testing.
+- Alternative: `BTreeMap` (inherent ordering at O(log n) per mutation) — omitted to favour cheaper hot‑path mutations.
+- `total` computed with overflow guard.
 
 ## Limitations
 
-- No persistence (in‑memory only).
-- No concurrency / parallelism yet.
-- Error verbosity can be noisy for large inputs.
+- No persistence, in‑memory only
+- No concurrency / parallelism support
+- Verbose stderr on large inputs
 
 ## Future Improvements
 
-- Implement a more refined dispute semantic for withdrawals to grant clients a better UX.
-- If current dispute semantic in kept, evaluate renaming withdrawal `chargeback` to `fraud_lock` and split `resolve` into explicit `customer_win` / `merchant_win`.
-- Handle re-disputes by (a) forbidding them on the same transaction, or (b) tracking disputes life cycle.
-- Optimize `chargeback` by pruning related transaction to reduce memory and forbid further life cycle actions.
-- Introduce a more structured error policy by identifying errors that should stop the whole processing, stop the processing for specific clients, and those that are recoverable.
-- Simplify error payloads by using IDs rather than whole models
-- Improve errors display representations and reporting (e.g. [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming#Newline-Delimited_JSON))
-- Abstract account storage behind a trait to enable swapping and mocking clients account persistence and retrieval.
-- Explore a redesign based on an event‑sourced approach that defines explicit aggregate, aggregate state, events, and transitions.
-- Parallelize per‑client processing by introducing infrastructural components like Kafka (with topics partitioned by client id and dedicated consumer group) or by switching the implementation to a dataflow programming approach (e.g. [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow)).
+- Implement a more refined withdrawal dispute semantic (e.g. provisional refunds) for better client UX.
+- If current semantic is kept, consider renaming withdrawal `chargeback` to `fraud_lock` and splitting `resolve` into explicit `customer_win` / `merchant_win`.
+- Handle re‑disputes explicitly: forbid on the same transaction OR track full dispute life cycle.
+- Optimize `chargeback` by pruning related transactions to reduce memory AND forbid further life cycle actions.
+- Introduce structured error policy:
+  - Classify whole‑process fatal, per‑client fatal (quarantine), recoverable.
+  - Evaluate per‑client error strategies:
+    - Record only the first error per account
+    - Record multiple errors per account
+    - Decide whether later transactions are ignored, quarantined, or still applied after an error
+- Simplify error payloads (use IDs instead of full structs).
+- Improve error output formats (e.g. [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming#Newline-delimited_JSON) stream).
+- Abstract account storage behind a trait to enable swapping/mocking persistence.
+- Explore an Event Sourced redesign with dedicated aggregates, states, events, and transitions.
+- Parallelize per‑client processing via, e.g. Kafka partitioned topic by client id + consumer group, or switching to a dataflow programming approach (https://github.com/TimelyDataflow/timely-dataflow).
