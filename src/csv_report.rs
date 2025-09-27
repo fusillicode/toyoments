@@ -28,6 +28,7 @@ pub enum CsvReportError {
 /// Errors are accumulated to let the caller decide the overall process success/exit code.
 ///
 /// # Rationale
+///
 /// The sorting was introduced to match the expected output and to permit:
 /// - Reproducible downstream processing
 /// - Easier snapshot testing
@@ -39,6 +40,7 @@ pub enum CsvReportError {
 /// This should be typically optimal for batch-style reporting at program end.
 ///
 /// # Alternative
+///
 /// Switch to a [`std::collections::BTreeMap`] to have inherent ordering but
 /// incur in an O(log n) cost for every mutation.
 pub fn write_to_stdout<'a, I>(clients_accounts: I) -> Vec<CsvReportError>

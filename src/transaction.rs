@@ -4,9 +4,27 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
+/// Client identifier newtype.
+///
+/// # Rationale
+///
+/// Inner `u16` is public because:
+/// - there are currently no invariants or validation rules beyond the primitive numeric range.
+/// - it avoids boilerplate.
+///
+/// If future constraints arise the field can be made private and a smart constructor added.
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd, parse_display::Display)]
 pub struct ClientId(pub u16);
 
+/// Transaction identifier newtype.
+///
+/// # Rationale
+///
+/// Inner `u32` is public because:
+/// - there are currently no invariants or validation rules beyond the primitive numeric range.
+/// - it avoids boilerplate.
+///
+/// If future constraints arise the field can be made private and a smart constructor added.
 #[derive(Debug, Deserialize, Copy, Clone, Hash, PartialEq, Eq, parse_display::Display)]
 pub struct TransactionId(pub u32);
 
