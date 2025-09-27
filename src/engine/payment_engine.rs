@@ -70,8 +70,8 @@ impl PaymentEngine {
                 if disputable_tx.is_deposit() {
                     crate::account::withdraw_and_hold(client_account, disputable_tx.amount)?;
                 }
-                // Withdrawal dispute (symmetric freeze model): no immediate balance mutation.
-                // We only mark it disputed; resolution or chargeback will decide funds.
+                // Withdrawal dispute (flag-only model): no immediate balance mutation.
+                // Mark disputed; later resolution may refund, chargeback only locks.
 
                 disputable_tx.is_disputed = true;
             }

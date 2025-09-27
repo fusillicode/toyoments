@@ -57,7 +57,7 @@ Negative amounts are rejected.
 ```csv
 client_id,available,held,total,locked
 1,4.0,0.0,4.0,false
-2,3.0,0.0,3.0,true
+2,1.0,0.0,1.0,true
 ```
 
 ## Assumptions
@@ -72,11 +72,31 @@ client_id,available,held,total,locked
 
 ### Dispute Semantics
 
-Flag‑Only Dispute Handling with no provisional credit for withdrawals.
-`chargeback` on a withdrawal locks the account without refund (i.e. not a consumer chargeback refund) to:
+The original spec maps cleanly to deposits: funds from an accepted deposit can be frozen (moved from `available` to `held`) while liability is investigated.
+Applying that rule symmetrically to withdrawals would imply either:
 
-- Avoid artificial inflation of `total` if "holding" a withdrawal (which already reduced balances).
-- Keep invariants simple with `total` never exceeding true economic value unless an explicit refund occurs.
+a. increasing `held` when a withdrawal is disputed (even though the deduction already occurred) or
+b. re‑crediting funds immediately as a temporary hold/refund.
+
+Both approaches have the following issues:
+
+- Increasing `held` on a withdrawal dispute would inflate `total` (available + held) above the true post‑withdrawal value, creating a phantom asset.
+- Auto re‑crediting (provisional refund) on every withdrawal dispute encourages abusive churn without any risk modeling and complicates invariants (oscillating totals on repeated disputes).
+
+To avoid the state issues the implementation adopts a Flag‑Only model for disputed withdrawals: dispute sets a flag, leaving balances untouched until a terminal action occurs.
+This keeps `total` a monotonic reflection of realised debits/credits unless an explicit refund (`resolve` of a withdrawal) is declared.
+
+Rationale / Invariants:
+
+- `total` never exceeds the amount that would exist absent any disputed withdrawals, unless a refund is granted.
+- No negative "held" scenarios or compensating entries are required for withdrawals.
+- Accounting remains symmetric in data model (same life‑cycle verbs) while intentionally asymmetric in balance mutations.
+
+Trade‑offs:
+
+- No provisional customer relief for disputed withdrawals (could be added later as a distinct verb, e.g. `provisional_refund`).
+- Terminology drift: `chargeback` on a withdrawal here means "finalize dispute and fraud/risk lock" rather than consumer refund; future rename (e.g. `fraud_lock`) recommended.
+- Merchant exposure metric (count/amount of currently disputed withdrawals) not yet surfaced; could inform risk decisions.
 
 Behaviour in case of deposits:
 
@@ -86,11 +106,11 @@ Behaviour in case of deposits:
 
 Behaviour in case of withdrawals:
 
-- Dispute: no immediate balance change (no provisional refund or hold increase).
+- Dispute: Flag only; no immediate balance change.
 - Resolve: Refund (re‑credit) the withdrawn amount to `available` (customer win scenario).
 - Chargeback: Lock account without refund (fraud/account risk lock). Withdrawal debit stands.
 
-Re-dispute after resolve are allowed, permitting repeated dispute cycles.
+Re-dispute after resolve are allowed, permitting repeated dispute cycles (simplifies experimentation; production systems usually restrict this).
 
 ## Error Handling (Current)
 
