@@ -79,6 +79,11 @@ pub fn unhold(client_account: &mut ClientAccount, amount: PositiveAmount) -> Res
     Ok(())
 }
 
+/// Locks the supplied [`ClientAccount`].
+///
+/// Sets its `locked` flag to `true`, preventing further balance mutations that
+/// require an unlocked account.
+/// Idempotent: calling again has no additional effect.
 pub const fn lock(client_account: &mut ClientAccount) {
     client_account.locked = true;
 }

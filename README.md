@@ -13,7 +13,7 @@ It ingests a CSV of transaction, mutates in‑memory client accounts, and emits 
 - Input: CSV with columns `type,client,tx,amount`.
 - Supported transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`.
 - Output: CSV with columns `client_id,available,held,total,locked` (sorted by `client_id`).
-- Errors: Non‑fatal issues (e.g. malformed row, business rule violation) are logged to stderr and processing continues (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
+- Errors: errors (e.g. malformed row, business rule violations, etc.) are logged to stderr without breaking the processing of subsequent transactions (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
 
 ## Build & Run
 
@@ -29,7 +29,7 @@ cargo run -- transactions.csv > report.csv 2> errors.log
 
 ## Testing
 
-Snapshot tests assert full stdout for determinism. Update snapshots:
+Snapshot integration tests assert full stdout. To update snapshots:
 
 ```bash
 INSTA_UPDATE=auto cargo test
@@ -65,7 +65,10 @@ client_id,available,held,total,locked
 - Transactions in the input CSV are **already sequentially ordered per client**.
 - No current error condition aborts the entire run. If that policy changes, the main loop must classify fatal errors and `exit(1)` early.
 - Errors are **non‑blocking** and printed to stderr; processing of subsequent transactions continues.
-- If per‑client fatal semantics become necessary, a strategy is still TBD (e.g. record first error on the account; decide whether to ignore, quarantine, or still apply later transactions).
+- If per‑client fatal semantics become necessary, a strategy must be defined. Possible options:
+    - Record only the first error for each account
+    - Record multiple errors for each account
+    - Decide whether to ignore, quarantine, or still apply later transactions in case of error(s)
 
 ### Dispute Semantics
 
@@ -97,14 +100,15 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 
 ## Design Notes
 
-- Maintaining a `HashMap` for accounts yields amortized O(1) mutation; final deterministic ordering achieved by sorting once at output time.
-- Decimal arithmetic uses `rust_decimal` to preserve fixed precision; total is computed with overflow checking.
+- Maintaining a `HashMap` for accounts yields amortized O(1) mutation 
+- Ordering for a deterministic output is done by sorting once at output time.
+- Decimal arithmetic uses `rust_decimal` to preserve fixed precision. Client account's `total` is computed with overflow checking.
 
 ## Limitations
 
 - No persistence (in‑memory only).
 - No concurrency / parallelism yet.
-- Error verbosity can be noisy in large inputs.
+- Error verbosity can be noisy for large inputs.
 
 ## Future Improvements
 
@@ -114,8 +118,8 @@ Re-dispute after resolve are allowed, permitting repeated dispute cycles.
 - Optimize chargeback by pruning related transaction to reduce memory and forbid further life cycle actions.
 - Introduce structured error policy (global fatal vs per‑client fatal vs recoverable) and clear exit codes.
 - Simplify error payloads by using IDs rather than whole models
-- Improve errors display representations and summary (e.g. NDJSON)
+- Improve errors display representations and summary (e.g. [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming#Newline-Delimited_JSON))
 - Abstract account storage behind a trait (enables alternate backends / persistence).
 - Explore an event‑sourced redesign: explicit aggregate state, events, and transitions.
-- Parallelize per‑client processing: e.g. Kafka (partition by client id + consumer group) or a dataflow style pipeline.
+- Parallelize per‑client processing by introducing Kafka (partition by client id + consumer group) or re‑design the solution following a dataflow programming approach (e.g. [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow)).
 - Consider batched or streaming snapshotting to external storage.
