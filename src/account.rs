@@ -1,3 +1,10 @@
+//! Client accounts storage and retrieval.
+//!
+//! Exposes the list of client accounts via [`ClientsAccounts`], per‑client record [`ClientAccount`], and balance
+//! mutation helpers (e.g. [`deposit`], [`withdraw`], [`hold`], [`unhold`], [`lock`]).
+//!
+//! Used by the processing engine to apply [`crate::transaction::Transaction`] effects and manage dispute life cycles.
+
 use std::collections::HashMap;
 
 use crate::transaction::ClientId;

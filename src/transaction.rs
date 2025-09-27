@@ -1,3 +1,11 @@
+//! Transaction related types obtained directly from parsing the input CSV.
+//!
+//! Defines core identifiers ([`ClientId`], [`TransactionId`]) and the [`Transaction`] enum
+//! with concrete structs for each variant of transaction (e.g. [`Deposit`]).
+//! [`PositiveAmount`] enforces that all transactions amounts are indeed positive. No negative
+//! amounts permitted.
+//! Formatting derives should keep error log and reporting somewhere stable.
+
 use color_eyre::eyre::bail;
 use rust_decimal::Decimal;
 use serde::Deserialize;
