@@ -10,10 +10,32 @@ It ingests a CSV of transaction, mutates in‑memory client accounts, and emits 
 
 ## Overview
 
-- Input: CSV with columns `type,client,tx,amount`.
+- Input: CSV with columns `type,client,tx,amount` with trimmed whitespaces from CSV fields and headers and positive amounts (negative amounts are rejected).
+  Example:
+
+```csv
+type,client,tx,amount
+deposit,1,1,5.1234
+deposit,2,3,3.0000
+dispute,1,1,
+withdrawal,2,4,2.0000
+resolve,1,1,
+withdrawal,1,2,1.1234
+dispute,2,4,
+chargeback,2,4,
+```
+
 - Supported transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`.
-- Output: CSV with columns `client_id,available,held,total,locked` (sorted by `client_id`).
-- Errors: Non‑fatal issues (e.g. malformed row, business rule violation) are logged to stderr and processing continues (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
+- Output: CSV with columns `client_id,available,held,total,locked` sorted by `client_id`.
+  Example:
+
+```csv
+client_id,available,held,total,locked
+1,4.0,0.0,4.0,false
+2,3.0,0.0,3.0,true
+```
+
+- Errors: both technical issues (e.g. deserialization/serialization errors, overflow) and business rule violations (e.g. not enough funds) are considered not terminating the processing and are logged to stderr (see [Assumptions](#assumptions) / [Future Improvements](#future-improvements)).
 
 ## Build & Run
 
@@ -33,31 +55,6 @@ Snapshot tests assert full stdout for determinism. Update snapshots:
 
 ```bash
 INSTA_UPDATE=auto cargo test
-```
-
-## Input Format (Example)
-
-```csv
-type,client,tx,amount
-deposit,1,1,5.1234
-deposit,2,3,3.0000
-dispute,1,1,
-withdrawal,2,4,2.0000
-resolve,1,1,
-withdrawal,1,2,1.1234
-dispute,2,4,
-chargeback,2,4,
-```
-
-Whitespaces from CSV fields and headers are trimmed.
-Negative amounts are rejected.
-
-## Output Format (Example)
-
-```csv
-client_id,available,held,total,locked
-1,4.0,0.0,4.0,false
-2,3.0,0.0,3.0,true
 ```
 
 ## Assumptions
