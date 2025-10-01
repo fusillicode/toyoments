@@ -76,7 +76,7 @@ where
 
 #[derive(Serialize)]
 struct ClientAccountReport {
-    client_id: ClientId,
+    client: ClientId,
     available: Decimal,
     held: Decimal,
     total: Decimal,
@@ -88,7 +88,7 @@ impl TryFrom<&ClientAccount> for ClientAccountReport {
 
     fn try_from(client_account: &ClientAccount) -> Result<Self, Self::Error> {
         Ok(Self {
-            client_id: client_account.client_id(),
+            client: client_account.client_id(),
             available: client_account.available(),
             held: client_account.held(),
             total: client_account.total().ok_or(CsvReportError::TotalOverflow {

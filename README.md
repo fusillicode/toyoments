@@ -11,7 +11,7 @@ An experimental in‑memory payment engine: reads a CSV of transactions, applies
 
 - Input CSV header: `type,client,tx,amount` (amount omitted for `dispute|resolve|chargeback`)
 - Transaction types: `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`
-- Output columns: `client_id,available,held,total,locked` (sorted by `client_id`)
+- Output columns: `client,available,held,total,locked` (sorted by `client`)
 - Errors (parse + business + reporting) are logged to stderr; processing continues
 - Whitespace trimmed; negative amounts rejected
 - Decimal math uses `rust_decimal`; original scale preserved (no extra rounding)
@@ -29,7 +29,7 @@ An experimental in‑memory payment engine: reads a CSV of transactions, applies
 
 | Column      | Type            | Notes                                                                  |
 | ----------- | --------------- | ---------------------------------------------------------------------- |
-| `client_id` | unsigned 16-bit | Sorted ascending                                                       |
+| `client`    | unsigned 16-bit | Sorted ascending                                                       |
 | `available` | decimal         | Spendable funds                                                        |
 | `held`      | decimal         | Frozen funds (disputed deposits only)                                  |
 | `total`     | decimal         | `available + held`; overflow checked; never negative                   |
@@ -52,7 +52,7 @@ chargeback,2,4,
 ### Example Output
 
 ```csv
-client_id,available,held,total,locked
+client,available,held,total,locked
 1,4.0,0.0,4.0,false
 2,1.0,0.0,1.0,true
 ```
